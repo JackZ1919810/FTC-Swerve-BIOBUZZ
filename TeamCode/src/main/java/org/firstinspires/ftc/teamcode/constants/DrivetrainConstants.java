@@ -42,10 +42,10 @@ public class DrivetrainConstants {
     public static double STEER_D = 0.01;
 
     public static final DrivetrainPIDConstants autoPIDConstants = new DrivetrainPIDConstants(
-            new PIDCoefficients(7.0, 0.0, 0.3),
-            new PIDCoefficients(9.0, 0.0, 0.2),
-            new Tolerances(0.01, 0.01),
-            new Tolerances(Math.toRadians(2.0), 0.01)
+            new PIDCoefficients(6.5, 0.0, 0.3), //this P value make the wheel adjusting a bit, a higher P value would decrease that.
+            new PIDCoefficients(7.0, 0.0, 0.2),
+            new Tolerances(0.02, 0.01), //lower the tolerance once the robot is tuned to accurate
+            new Tolerances(Math.toRadians(3.0), 0.01)
     );
 
     public final static class PIDCoefficients {
