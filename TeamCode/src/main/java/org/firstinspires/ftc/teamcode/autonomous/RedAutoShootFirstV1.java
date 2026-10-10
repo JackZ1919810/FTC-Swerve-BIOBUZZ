@@ -43,7 +43,8 @@ public class RedAutoShootFirstV1 extends NextFTCOpMode {
                 new Delay(1.0),
 
                 //5. Go to parking pos. 96in x+, 52in y+
-                new PIDToPosition(drive, Pose2d.fromInches(96, 52, new Rotation2d(0)))
+                new PIDToPosition(drive, Pose2d.fromInches(30, 30, new Rotation2d(0))),
+                new PIDToPosition(drive, Pose2d.fromInches(96,50, new Rotation2d(0)))
         ).schedule();
 
     }
