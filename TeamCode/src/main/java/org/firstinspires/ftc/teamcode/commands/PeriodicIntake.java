@@ -1,11 +1,11 @@
 package org.firstinspires.ftc.teamcode.commands;
 
 import dev.nextftc.core.commands.Command;
-import org.firstinspires.ftc.teamcode.Subsystems.IntakeSubsystem;
+import org.firstinspires.ftc.teamcode.subsystems.IntakeSubsystem;
 
 public class PeriodicIntake extends Command{
-    public final IntakeSubsystem intake;
-    public final double power;
+    private final IntakeSubsystem intake;
+    private final double power;
 
     //constructor
     public PeriodicIntake (IntakeSubsystem intake, double power){

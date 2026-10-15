@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.Subsystems;
+package org.firstinspires.ftc.teamcode.subsystems;
 
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -10,21 +10,21 @@ import dev.nextftc.core.commands.Command;
 import dev.nextftc.core.subsystems.Subsystem;
 import dev.nextftc.core.commands.utility.NullCommand;
 
-public class IntakeSubsystem implements Subsystem{
+public class IndexerSubsystem implements Subsystem{
 
     private DcMotorEx motor;
     private final HardwareMap hardwareMap;
     private Command defaultCommand = new NullCommand();
-    private boolean isIntialized = false;
+    private boolean isInitialized = false;
     private double targetPower = 0.0;
     private double lastPower = Double.NaN;
 
-    public IntakeSubsystem (HardwareMap hardwareMap) {
+    public IndexerSubsystem(HardwareMap hardwareMap){
         this.hardwareMap = hardwareMap;
     }
 
     @Override
-    public Command getDefaultCommand() {
+    public Command getDefaultCommand(){
         return defaultCommand;
     }
 
@@ -33,20 +33,21 @@ public class IntakeSubsystem implements Subsystem{
     }
 
     @Override
-    public void initialize() {
-        motor = hardwareMap.get(DcMotorEx.class, "intake");
+    public void initialize(){
+        motor = hardwareMap.get(DcMotorEx.class, "index");
+        motor.setDirection(DcMotorSimple.Direction.REVERSE);
         motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        targetPower = 0;
-        isIntialized = true;
+        targetPower = 0.0;
+        isInitialized = true;
     }
 
     @Override
     public void periodic(){
-        if (!isIntialized) return;
+        if(!isInitialized) return;
 
-        if (targetPower != lastPower){
+        if(targetPower != lastPower){
             motor.setPower(targetPower);
             lastPower = targetPower;
         }
@@ -63,5 +64,4 @@ public class IntakeSubsystem implements Subsystem{
     public double getPower(){
         return targetPower;
     }
-
 }
