@@ -35,7 +35,7 @@ public class IntakeSubsystem implements Subsystem{
     @Override
     public void initialize() {
         motor = hardwareMap.get(DcMotorEx.class, "intake");
-        motor.setDirection(DcMotorSimple.Direction.REVERSE);
+        motor.setDirection(DcMotorSimple.Direction.FORWARD);
         motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 

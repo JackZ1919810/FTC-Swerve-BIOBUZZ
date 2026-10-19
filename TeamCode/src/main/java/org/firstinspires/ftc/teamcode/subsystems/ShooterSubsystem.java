@@ -40,7 +40,7 @@ public class ShooterSubsystem implements Subsystem {
         motor = hardwareMap.get(DcMotorEx.class, "shooter");
         motor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);           // required for setVelocity
         motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT); // coast down instead of braking
-        motor.setDirection(DcMotorSimple.Direction.REVERSE);
+        motor.setDirection(DcMotorSimple.Direction.FORWARD);
 
         targetRPM = 0.0;
         lastTarget = Double.NaN;
