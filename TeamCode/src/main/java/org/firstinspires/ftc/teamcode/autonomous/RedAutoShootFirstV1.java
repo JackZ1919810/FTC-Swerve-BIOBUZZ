@@ -21,6 +21,7 @@ public class RedAutoShootFirstV1 extends NextFTCOpMode {
     public void onInit() {
         drive = new SwerveDrivetrain(hardwareMap);
         drive.initialize();
+        drive.setPose(new Pose2d(0,0,0));
 
         addComponents(new SubsystemComponent(drive));
     }
@@ -33,7 +34,7 @@ public class RedAutoShootFirstV1 extends NextFTCOpMode {
                 new Delay(1.0),
 
                 //2. Turn 90 and drive to pick up 52in
-                new PIDToPosition(drive, new Pose2d(0,0, Rotation2d.fromDegrees(90))).endAfter(5),
+                new PIDToPosition(drive, new Pose2d(0,10, Rotation2d.fromDegrees(90))).endAfter(5),
                 new PIDToPosition(drive, Pose2d.fromInches(0, 52, Rotation2d.fromDegrees(90))).endAfter(5),
 
                 //3. Move back to shooting pos. and turn to 0 deg.

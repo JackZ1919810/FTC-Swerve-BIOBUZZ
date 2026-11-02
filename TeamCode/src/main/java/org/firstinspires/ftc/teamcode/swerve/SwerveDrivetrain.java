@@ -34,6 +34,7 @@ public class SwerveDrivetrain implements Subsystem {
     private Command defaultCommand = new NullCommand();
     private SparkFunOTOS otos;
     private boolean isInitialized = false;
+    private Pose2d pose = new Pose2d(0,0,0);
 
     private SwerveModuleState[] lastDesiredStates = new SwerveModuleState[] {
             new SwerveModuleState(), new SwerveModuleState(), new SwerveModuleState(), new SwerveModuleState()
@@ -82,17 +83,8 @@ public class SwerveDrivetrain implements Subsystem {
     public void periodic() {
         if (!isInitialized) return;
 
-        // Live update offsets from Dashboard
-        leftFront.setOffset(DrivetrainConstants.LEFT_FRONT_OFFSET);
-        rightFront.setOffset(DrivetrainConstants.RIGHT_FRONT_OFFSET);
-        leftRear.setOffset(DrivetrainConstants.LEFT_REAR_OFFSET);
-        rightRear.setOffset(DrivetrainConstants.RIGHT_REAR_OFFSET);
-
-        // Live update servo inversions from Dashboard
-        leftFront.setServoReversed(DrivetrainConstants.LEFT_FRONT_SERVO_REVERSED);
-        rightFront.setServoReversed(DrivetrainConstants.RIGHT_FRONT_SERVO_REVERSED);
-        leftRear.setServoReversed(DrivetrainConstants.LEFT_REAR_SERVO_REVERSED);
-        rightRear.setServoReversed(DrivetrainConstants.RIGHT_REAR_SERVO_REVERSED);
+        SparkFunOTOS.Pose2D otosPose = otos.getPosition();
+        pose = new Pose2d(otosPose.x, otosPose.y, new Rotation2d(otosPose.h));
 
         leftFront.update();
         rightFront.update();
@@ -125,9 +117,11 @@ public class SwerveDrivetrain implements Subsystem {
     }
 
     public Pose2d getPose() {
-        if (!isInitialized) return new Pose2d();
-        SparkFunOTOS.Pose2D otosPose = otos.getPosition();
-        return new Pose2d(otosPose.x, otosPose.y, new Rotation2d(otosPose.h));
+        return pose;
+    }
+    public void setPose(Pose2d pose){
+        otos.setPosition(new SparkFunOTOS.Pose2D(pose.x, pose.y, pose.heading.getRadians()));
+        periodic();
     }
 
     public void resetPose() {
