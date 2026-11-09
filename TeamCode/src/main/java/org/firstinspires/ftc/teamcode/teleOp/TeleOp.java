@@ -9,12 +9,10 @@ import dev.nextftc.core.components.SubsystemComponent;
 import dev.nextftc.ftc.Gamepads;
 import dev.nextftc.ftc.NextFTCOpMode;
 
-import org.firstinspires.ftc.teamcode.commands.IndexFollowPower;
 import org.firstinspires.ftc.teamcode.commands.IntakeFollowPower;
 import org.firstinspires.ftc.teamcode.commands.ShooterFollowRPM;
 import org.firstinspires.ftc.teamcode.commands.SwerveDriveCommand;
 import org.firstinspires.ftc.teamcode.constants.SubsystemConstants;
-import org.firstinspires.ftc.teamcode.subsystems.IndexerSubsystem;
 import org.firstinspires.ftc.teamcode.subsystems.IntakeSubsystem;
 import org.firstinspires.ftc.teamcode.subsystems.ShooterSubsystem;
 import org.firstinspires.ftc.teamcode.swerve.SwerveDrivetrain;
@@ -36,7 +34,6 @@ public class TeleOp extends NextFTCOpMode {
 
     private SwerveDrivetrain drivetrain;
     private IntakeSubsystem intake;
-    private IndexerSubsystem indexer;
     private ShooterSubsystem shooter;
 
     private boolean fieldCentric = true;
@@ -48,19 +45,21 @@ public class TeleOp extends NextFTCOpMode {
         telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
 
         drivetrain = new SwerveDrivetrain(hardwareMap);
+
         intake = new IntakeSubsystem(hardwareMap);
-        indexer = new IndexerSubsystem(hardwareMap);
         shooter = new ShooterSubsystem(hardwareMap);
 
-        // addComponents() is called inside onInit, which is too late for NextFTC
-        // to call initialize() for us, so call it here
+        /*
+        addComponents() is called inside onInit, which is too late for NextFTC
+        to call initialize() for us, so call it here
+        */
+
         drivetrain.initialize();
         intake.initialize();
-        indexer.initialize();
         shooter.initialize();
 
         addComponents(
-                new SubsystemComponent(drivetrain, intake, indexer, shooter),
+                new SubsystemComponent(drivetrain, intake, shooter),
                 BindingsComponent.INSTANCE
         );
 
@@ -83,10 +82,6 @@ public class TeleOp extends NextFTCOpMode {
 
         intake.setDefaultCommand(new IntakeFollowPower(intake,
                 () -> intakeHeld() ? SubsystemConstants.IntakePower : 0.0));
-
-        // The indexer runs whenever the intake, the indexer button, or shooter feeding is in use
-        indexer.setDefaultCommand(new IndexFollowPower(indexer,
-                () -> indexHeld()  ? SubsystemConstants.IndexPower : 0.0));
 
         shooter.setDefaultCommand(new ShooterFollowRPM(shooter,
                 () -> shootHeld() ? selectedRPM : 0.0));
@@ -118,7 +113,6 @@ public class TeleOp extends NextFTCOpMode {
         telemetry.addLine();
         telemetry.addLine("--- Intake / Indexer ---");
         telemetry.addData("Intake power", "%.2f", intake.getPower());
-        telemetry.addData("Indexer power", "%.2f", indexer.getPower());
 
         telemetry.update();
     }
@@ -129,15 +123,12 @@ public class TeleOp extends NextFTCOpMode {
         return gamepad1.right_trigger > TRIGGER_THRESHOLD;
     }
 
-    private boolean indexHeld() {
-        return gamepad1.left_trigger > TRIGGER_THRESHOLD;
-    }
 
     private boolean shootHeld() {
         return gamepad1.right_bumper;
     }
 
-    // Should the indexer push balls into the shooter right now?
+
     private boolean feedShooter() {
         if (!shootHeld()) return false;
         return !SubsystemConstants.FeedOnlyAtSpeed || shooter.atSpeed();

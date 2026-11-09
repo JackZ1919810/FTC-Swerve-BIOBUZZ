@@ -17,8 +17,8 @@ package org.firstinspires.ftc.teamcode.subsystems;
  *     public static double TurretGearRatio = 1.5;          // turret degrees per servo degree (1:1.5 step-up)
  *     public static double TurretServoRangeDeg = 350;      // Axon Mini MK2 travel for position 0 -> 1 at 500-2500 us
  *     public static double TurretCenterPos = 0.5;          // servo position where the turret faces forward (calibrate)
- *     public static double TurretMinDeg = -180;            // limits: 360 degrees of travel around the robot front (hardware allows +-262.5)
- *     public static double TurretMaxDeg = 180;
+ *     public static double TurretMinDeg = -200;            // limits: 400 degree band, wrap-around unwinds here (hardware allows +-262.5)
+ *     public static double TurretMaxDeg = 200;
  *     public static double TurretRightTrim = 0.0;          // position offset so the two servos don't fight
  *     public static boolean TurretRightReversed = false;   // true if the second servo is mounted mirrored
  *     public static double TurretStickDegPerSec = 180;     // turret speed at full stick (TurretFollowStickExample)
