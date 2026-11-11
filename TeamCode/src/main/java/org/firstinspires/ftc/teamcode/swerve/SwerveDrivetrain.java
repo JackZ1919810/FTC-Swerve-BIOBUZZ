@@ -55,15 +55,10 @@ public class SwerveDrivetrain implements Subsystem {
 
     @Override
     public void initialize() {
-        // The kS lambdas read the constant every loop, so Dashboard changes apply without re-init
-        leftFront.init(hardwareMap, "motorLF", "servoLF", "encoderLF", DrivetrainConstants.LEFT_FRONT_OFFSET,
-                () -> DrivetrainConstants.LEFT_FRONT_STEER_KS);
-        rightFront.init(hardwareMap, "motorRF", "servoRF", "encoderRF", DrivetrainConstants.RIGHT_FRONT_OFFSET,
-                () -> DrivetrainConstants.RIGHT_FRONT_STEER_KS);
-        leftRear.init(hardwareMap, "motorLR", "servoLR", "encoderLR", DrivetrainConstants.LEFT_REAR_OFFSET,
-                () -> DrivetrainConstants.LEFT_REAR_STEER_KS);
-        rightRear.init(hardwareMap, "motorRR", "servoRR", "encoderRR", DrivetrainConstants.RIGHT_REAR_OFFSET,
-                () -> DrivetrainConstants.RIGHT_REAR_STEER_KS);
+        leftFront.init(hardwareMap, "motorLF", "servoLF", "encoderLF", DrivetrainConstants.LEFT_FRONT_OFFSET);
+        rightFront.init(hardwareMap, "motorRF", "servoRF", "encoderRF", DrivetrainConstants.RIGHT_FRONT_OFFSET);
+        leftRear.init(hardwareMap, "motorLR", "servoLR", "encoderLR", DrivetrainConstants.LEFT_REAR_OFFSET);
+        rightRear.init(hardwareMap, "motorRR", "servoRR", "encoderRR", DrivetrainConstants.RIGHT_REAR_OFFSET);
 
         otos = hardwareMap.get(SparkFunOTOS.class, "otos");
         configureOtos();
