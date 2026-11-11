@@ -193,7 +193,7 @@ public class TurretSubsystem implements Subsystem {
         return Range.clip(deg, SubsystemConstants.TurretMinDeg, SubsystemConstants.TurretMaxDeg);
     }
 
-    // turret deg -> position; with the defaults this is 0.5 + turretDeg / 525 (guide, Part 3)
+    // turret deg -> position; with the defaults this is 0.5 + turretDeg / 455 (guide, Part 3)
     private double degToPos(double turretDeg) {
         double pos = SubsystemConstants.TurretCenterPos
                 + turretDeg / (SubsystemConstants.TurretServoRangeDeg * SubsystemConstants.TurretGearRatio);

@@ -16,7 +16,7 @@ package org.firstinspires.ftc.teamcode.teleOp;
  *
  * Before the first run:
  *   - check that the cables can take the full 400 degrees (-200 to 200)
- *   - keep hands clear: unwinding is a fast swing of about 360 degrees (about 0.44 s)
+ *   - keep hands clear: unwinding is a fast swing of about 360 degrees (about 0.51 s)
  *   - start with TurretWrapTestDegPerSec = 60 (Dashboard), and raise it once it behaves
  */
 

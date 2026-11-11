@@ -13,11 +13,16 @@ import org.firstinspires.ftc.teamcode.util.PIDController;
 import org.firstinspires.ftc.teamcode.util.Rotation2d;
 import org.firstinspires.ftc.teamcode.util.SwerveModuleState;
 
+import java.util.function.DoubleSupplier;
+
 public class SwerveModule {
     private DcMotorEx motor;
     private CRServoImplEx servo;
     private AnalogEncoder encoder;
     private SwerveModuleState desiredState = new SwerveModuleState();
+
+    // This pod's steering friction power (kS). A supplier so Dashboard changes apply live.
+    private DoubleSupplier steerKS = () -> 0.0;
 
     private final PIDController steeringController = new PIDController(
             DrivetrainConstants.STEER_P,
@@ -25,7 +30,9 @@ public class SwerveModule {
             DrivetrainConstants.STEER_D
     );
 
-    public void init(HardwareMap hMap, String motorName, String servoName, String encoderName, double offset) {
+    public void init(HardwareMap hMap, String motorName, String servoName, String encoderName,
+                     double offset, DoubleSupplier steerKS) {
+        this.steerKS = steerKS;
         motor = hMap.get(DcMotorEx.class, motorName);
         servo = hMap.get(CRServoImplEx.class, servoName);
         encoder = new AnalogEncoder(hMap, encoderName, offset);
@@ -70,9 +77,21 @@ public class SwerveModule {
         double drivePower = desiredState.speedMetersPerSecond / DrivetrainConstants.MAX_SPEED_MPS;
         motor.setPower(drivePower);
 
+        // Read the encoder once, so the PID and the kS term use the same angle
+        Rotation2d currentAngle = getRotation();
+
         steeringController.setSetpoint(desiredState.angle.getRadians());
-        double steerPower = steeringController.calculate(getRotation().getRadians());
-        
+        double steerPower = steeringController.calculate(currentAngle.getRadians());
+
+        // Steering error, wrapped to (-pi, pi] the same way the PID wraps it
+        double steerError = desiredState.angle.minus(currentAngle).getRadians();
+
+        // Add this pod's friction power in the direction it needs to turn,
+        // so every pod is left with the same P * error to actually turn with
+        if (Math.abs(steerError) > Math.toRadians(DrivetrainConstants.STEER_KS_TOLERANCE_DEG)) {
+            steerPower += steerKS.getAsDouble() * Math.signum(steerError);
+        }
+
         // Clamp output to [-1, 1]
         steerPower = Math.max(-1.0, Math.min(1.0, steerPower));
         servo.setPower(steerPower);

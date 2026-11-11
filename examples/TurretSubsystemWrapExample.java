@@ -6,7 +6,7 @@ package org.firstinspires.ftc.teamcode.subsystems;
  * Use it to compare against your own TurretSubsystem; don't copy it in as-is.
  *
  * Hardware: 1-2 Axon Mini MK2 servos in servo (not continuous) mode, driving the turret through a
- * 1:1.5 step-up (1 servo degree = 1.5 turret degrees). Optional: the Axon's 4th wire (analog feedback)
+ * 1:1.3 step-up (1 servo degree = 1.3 turret degrees; measured). Optional: the Axon's 4th wire (analog feedback)
  * plugged into an analog port and configured as "turretEncoder".
  *
  * Angles: degrees, 0 = robot front, positive = counterclockwise seen from above (same as Rotation2d / OTOS).
@@ -14,10 +14,10 @@ package org.firstinspires.ftc.teamcode.subsystems;
  * Constants this class expects in SubsystemConstants (inside the @Config class, so Dashboard can tune them):
  *
  *     //Turret constants
- *     public static double TurretGearRatio = 1.5;          // turret degrees per servo degree (1:1.5 step-up)
+ *     public static double TurretGearRatio = 1.3;          // turret degrees per servo degree (1:1.3 step-up, measured)
  *     public static double TurretServoRangeDeg = 350;      // Axon Mini MK2 travel for position 0 -> 1 at 500-2500 us
  *     public static double TurretCenterPos = 0.5;          // servo position where the turret faces forward (calibrate)
- *     public static double TurretMinDeg = -200;            // soft limits, inside the cable limits (hardware allows +-262.5)
+ *     public static double TurretMinDeg = -200;            // soft limits, inside the cable limits (hardware allows +-227.5)
  *     public static double TurretMaxDeg = 200;
  *     public static double TurretToleranceDeg = 2;
  *     public static double TurretFlipHysteresisDeg = 10;   // only used if the window is narrower than 360 deg
@@ -26,7 +26,7 @@ package org.firstinspires.ftc.teamcode.subsystems;
  *     public static double TurretServoSecPer60Deg = 0.11;  // Axon Mini MK2 spec at 4.8 V, no load
  *     public static double TurretTravelSafety = 1.5;       // the loaded turret is slower than the no-load spec
  *     public static double TurretFeedbackCenterVolts = 1.65; // analog reading with the turret at 0 deg (calibrate)
- *     public static double TurretFeedbackDegPerVolt = 163.6; // turret deg per volt; assumes 3.3 V = 360 servo deg (calibrate, sign matters)
+ *     public static double TurretFeedbackDegPerVolt = 141.8; // turret deg per volt; assumes 3.3 V = 360 servo deg (calibrate, sign matters)
  */
 
 import com.qualcomm.robotcore.hardware.AnalogInput;
@@ -223,7 +223,7 @@ public class TurretSubsystemWrapExample implements Subsystem {
         return (pastMax <= beforeMin) ? max : min;
     }
 
-    // turret deg -> servo deg -> position; with the defaults this is 0.5 + turretDeg / 525
+    // turret deg -> servo deg -> position; with the defaults this is 0.5 + turretDeg / 455
     private double degreesToPosition(double turretDeg) {
         double servoDeg = turretDeg / SubsystemConstants.TurretGearRatio;
         double position = SubsystemConstants.TurretCenterPos + servoDeg / SubsystemConstants.TurretServoRangeDeg;

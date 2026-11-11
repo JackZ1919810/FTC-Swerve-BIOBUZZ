@@ -20,10 +20,10 @@ public class DrivetrainConstants {
     public static final double MAX_ANGULAR_VELOCITY_RAD_PER_SEC = MAX_SPEED_MPS / Math.hypot(WHEEL_BASE_METERS / 2.0, TRACK_WIDTH_METERS / 2.0);
 
     // Encoder Offsets (radians)
-    public static double LEFT_FRONT_OFFSET = 2.983;
-    public static double RIGHT_FRONT_OFFSET = 4.893;
-    public static double LEFT_REAR_OFFSET = 2.414;
-    public static double RIGHT_REAR_OFFSET = 2.562;
+    public static double LEFT_FRONT_OFFSET = 4.212;
+    public static double RIGHT_FRONT_OFFSET = 1.329;
+    public static double LEFT_REAR_OFFSET = 4.552;
+    public static double RIGHT_REAR_OFFSET = 0.486;
 
     // Servo Inversions
     public static boolean LEFT_FRONT_SERVO_REVERSED = false;
@@ -40,6 +40,17 @@ public class DrivetrainConstants {
     public static double STEER_P = 0.4;
     public static double STEER_I = 0.0;
     public static double STEER_D = 0.01;
+
+    // Steering friction (kS): extra servo power each pod gets on top of the PID,
+    // in the direction it needs to turn, to cancel that pod's own friction.
+    // Measure with ServoTestOpMode: the power at which the pod just starts to turn.
+    // The tight pod needs the biggest value. 0 = off (plain PID, same as before).
+    public static double LEFT_FRONT_STEER_KS = 0.0;
+    public static double RIGHT_FRONT_STEER_KS = 0.0;
+    public static double LEFT_REAR_STEER_KS = 0.0;
+    public static double RIGHT_REAR_STEER_KS = 0.0;
+    // No kS inside this error (degrees), so a pod doesn't buzz back and forth at its target
+    public static double STEER_KS_TOLERANCE_DEG = 1.0;
 
     public static final DrivetrainPIDConstants autoPIDConstants = new DrivetrainPIDConstants(
             new PIDCoefficients(6.5, 0.0, 0.3), //this P value make the wheel adjusting a bit, a higher P value would decrease that.
