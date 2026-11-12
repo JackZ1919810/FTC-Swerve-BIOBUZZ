@@ -11,6 +11,7 @@ import dev.nextftc.core.commands.utility.NullCommand;
 import dev.nextftc.core.subsystems.Subsystem;
 
 import org.firstinspires.ftc.teamcode.constants.SubsystemConstants;
+import org.firstinspires.ftc.teamcode.util.PIDController;
 
 public class ShooterSubsystem implements Subsystem {
 
@@ -21,6 +22,8 @@ public class ShooterSubsystem implements Subsystem {
 
     private double targetRPM = 0.0;            // what commands ask for
     private double lastTarget = Double.NaN;    // what was last sent to the motor
+    private final PIDController pid = new PIDController(
+            SubsystemConstants.ShooterKP, SubsystemConstants.ShooterKI, SubsystemConstants.ShooterKD);
 
     public ShooterSubsystem(HardwareMap hardwareMap) {
         this.hardwareMap = hardwareMap;
@@ -38,12 +41,14 @@ public class ShooterSubsystem implements Subsystem {
     @Override
     public void initialize() {
         motor = hardwareMap.get(DcMotorEx.class, "shooter");
-        motor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);           // required for setVelocity
+        motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);           //Use PID control instead of setVelocity
         motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT); // coast down instead of braking
         motor.setDirection(DcMotorSimple.Direction.FORWARD);
 
         targetRPM = 0.0;
         lastTarget = Double.NaN;
+
+        pid.reset();
         isInitialized = true;
     }
 
@@ -51,14 +56,29 @@ public class ShooterSubsystem implements Subsystem {
     public void periodic() {
         if (!isInitialized) return;
 
-        if (targetRPM != lastTarget) {
-            if (targetRPM == 0) {
-                motor.setPower(0);                          // coast (setVelocity(0) would brake hard)
-            } else {
-                motor.setVelocity(rpmToTps(targetRPM));     // hub holds this speed on its own
+        pid.setP(SubsystemConstants.ShooterKP);
+        pid.setI(SubsystemConstants.ShooterKI);
+        pid.setD(SubsystemConstants.ShooterKD);
+
+        if (targetRPM == 0){
+            if (lastTarget != 0){
+                motor.setPower(0);
+                pid.reset();
+                lastTarget = 0;
             }
-            lastTarget = targetRPM;
+            return;
         }
+
+        if (targetRPM != lastTarget) {
+           pid.reset();
+           pid.setSetpoint(targetRPM);
+           lastTarget = targetRPM;
+        }
+
+        double feedforward = SubsystemConstants.ShooterKV * targetRPM;
+        double feedback = pid.calculate(getRPM());
+
+        motor.setPower(Range.clip(feedforward + feedback, 0.0, 1.0));
     }
 
     // ----- Abilities that commands can use (all in RPM) -----

@@ -20,10 +20,10 @@ public class DrivetrainConstants {
     public static final double MAX_ANGULAR_VELOCITY_RAD_PER_SEC = MAX_SPEED_MPS / Math.hypot(WHEEL_BASE_METERS / 2.0, TRACK_WIDTH_METERS / 2.0);
 
     // Encoder Offsets (radians)
-    public static double LEFT_FRONT_OFFSET = 4.208;
-    public static double RIGHT_FRONT_OFFSET = 1.319;
+    public static double LEFT_FRONT_OFFSET = 4.225;
+    public static double RIGHT_FRONT_OFFSET = 1.323;
     public static double LEFT_REAR_OFFSET = 4.541;
-    public static double RIGHT_REAR_OFFSET = 0.506;
+    public static double RIGHT_REAR_OFFSET = 0.476;
 
     // Servo Inversions
     public static boolean LEFT_FRONT_SERVO_REVERSED = false;
@@ -36,10 +36,29 @@ public class DrivetrainConstants {
     public static final double TICKS_PER_REV = 537.7;
     public static final double TICKS_PER_METER = TICKS_PER_REV / (WHEEL_DIAMETER_METERS * Math.PI);
 
-    // Steering PID
+    // Default Steering PID
     public static double STEER_P = 0.4;
     public static double STEER_I = 0.0;
     public static double STEER_D = 0.01;
+
+    // Individual Steering PID
+    // LF Steering
+    public static double LF_STEER_P = 0.4;
+    public static double LF_STEER_I = 0.0;
+    public static double LF_STEER_D = 0.01;
+    // RF Steering
+    public static double RF_STEER_P = 0.4;
+    public static double RF_STEER_I = 0.0;
+    public static double RF_STEER_D = 0.01;
+    // LR Steering
+    public static double LR_STEER_P = 0.3;
+    public static double LR_STEER_I = 0.0;
+    public static double LR_STEER_D = 0.01;
+    // RR Steering
+    public static double RR_STEER_P = 0.475;
+    public static double RR_STEER_I = 0.0;
+    public static double RR_STEER_D = 0.01;
+
 
     public static final DrivetrainPIDConstants autoPIDConstants = new DrivetrainPIDConstants(
             new PIDCoefficients(6.5, 0.0, 0.3), //this P value make the wheel adjusting a bit, a higher P value would decrease that.

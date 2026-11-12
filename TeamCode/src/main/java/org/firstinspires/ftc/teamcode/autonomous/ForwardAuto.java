@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.autonomous;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import dev.nextftc.ftc.NextFTCOpMode;
+import dev.nextftc.ftc.components.BulkReadComponent;
 import dev.nextftc.core.components.SubsystemComponent;
 import org.firstinspires.ftc.teamcode.swerve.SwerveDrivetrain;
 import org.firstinspires.ftc.teamcode.commands.PIDToPosition;
@@ -18,7 +19,7 @@ public class ForwardAuto extends NextFTCOpMode {
         drivetrain.initialize();
         
         // Register the drivetrain so it is initialized and updated by the scheduler
-        addComponents(new SubsystemComponent(drivetrain));
+        addComponents(new SubsystemComponent(drivetrain), BulkReadComponent.INSTANCE);
         
         telemetry.addData("Status", "Initialized");
         telemetry.update();

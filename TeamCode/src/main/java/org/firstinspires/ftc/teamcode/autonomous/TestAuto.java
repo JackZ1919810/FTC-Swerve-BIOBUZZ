@@ -10,6 +10,7 @@ import org.firstinspires.ftc.teamcode.util.Rotation2d;
 import dev.nextftc.core.commands.groups.SequentialGroup;
 import dev.nextftc.core.components.SubsystemComponent;
 import dev.nextftc.ftc.NextFTCOpMode;
+import dev.nextftc.ftc.components.BulkReadComponent;
 
 @Autonomous
 public class TestAuto extends NextFTCOpMode {
@@ -21,7 +22,7 @@ public class TestAuto extends NextFTCOpMode {
         drive = new SwerveDrivetrain(hardwareMap);
         drive.initialize();
 
-        addComponents(new SubsystemComponent(drive));
+        addComponents(new SubsystemComponent(drive), BulkReadComponent.INSTANCE);
     }
 
     @Override

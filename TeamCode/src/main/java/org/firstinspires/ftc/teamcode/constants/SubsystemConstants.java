@@ -32,8 +32,16 @@ public class SubsystemConstants {
     public static double ShooterTicksPerRev = 28;   // encoder ticks per motor revolution (1:1)
     public static double ShooterMaxRPM = 5700;      // fastest speed the shooter may be asked for
     public static double defaultRPM = 4900;
+    public static double ShooterIdleRPM = 3000;
     public static double RPMTolerance = 50;
     public static double RPMStep = 100;     // change per d-pad press in TeleOp
     public static double MinRPM = 1000;     // lowest speed the d-pad can select
     public static boolean FeedOnlyAtSpeed = false;  // true = indexer waits until the shooter is at speed
+
+    // Shooter PID (our own controller in ShooterSubsystem; the motor runs RUN_WITHOUT_ENCODER)
+    // power = ShooterKV * targetRPM + PID(targetRPM - measuredRPM), clipped to [0, 1]
+    public static double ShooterKV = 0.000172;  // feedforward power per RPM = 1 / (RPM at full power). Placeholder (1/5800): measure it
+    public static double ShooterKP = 0.0005;    // extra power per RPM of error (200 RPM low -> +0.1 power)
+    public static double ShooterKI = 0.0;       // start at 0: no limit on the sum in util.PIDController
+    public static double ShooterKD = 0.0;       // start at 0: velocity readings are noisy
 }

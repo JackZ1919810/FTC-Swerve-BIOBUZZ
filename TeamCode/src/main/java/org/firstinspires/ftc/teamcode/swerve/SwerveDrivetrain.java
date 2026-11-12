@@ -11,6 +11,7 @@ import dev.nextftc.core.subsystems.Subsystem;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.constants.DrivetrainConstants;
+import org.firstinspires.ftc.teamcode.constants.SubsystemConstants;
 import org.firstinspires.ftc.teamcode.util.ChassisSpeeds;
 import org.firstinspires.ftc.teamcode.util.Pose2d;
 import org.firstinspires.ftc.teamcode.util.Rotation2d;
@@ -56,9 +57,13 @@ public class SwerveDrivetrain implements Subsystem {
     @Override
     public void initialize() {
         leftFront.init(hardwareMap, "motorLF", "servoLF", "encoderLF", DrivetrainConstants.LEFT_FRONT_OFFSET);
+        leftFront.setPID(DrivetrainConstants.STEER_P, DrivetrainConstants.STEER_I, DrivetrainConstants.STEER_D);
         rightFront.init(hardwareMap, "motorRF", "servoRF", "encoderRF", DrivetrainConstants.RIGHT_FRONT_OFFSET);
+        rightFront.setPID(DrivetrainConstants.STEER_P, DrivetrainConstants.STEER_I, DrivetrainConstants.STEER_D);
         leftRear.init(hardwareMap, "motorLR", "servoLR", "encoderLR", DrivetrainConstants.LEFT_REAR_OFFSET);
+        leftRear.setPID(DrivetrainConstants.STEER_P, DrivetrainConstants.STEER_I, DrivetrainConstants.STEER_D);
         rightRear.init(hardwareMap, "motorRR", "servoRR", "encoderRR", DrivetrainConstants.RIGHT_REAR_OFFSET);
+        rightRear.setPID(DrivetrainConstants.STEER_P, DrivetrainConstants.STEER_I, DrivetrainConstants.STEER_D);
 
         otos = hardwareMap.get(SparkFunOTOS.class, "otos");
         configureOtos();
@@ -86,10 +91,14 @@ public class SwerveDrivetrain implements Subsystem {
         SparkFunOTOS.Pose2D otosPose = otos.getPosition();
         pose = new Pose2d(otosPose.x, otosPose.y, new Rotation2d(otosPose.h));
 
-        leftFront.update();
-        rightFront.update();
-        leftRear.update();
-        rightRear.update();
+        leftFront.update(DrivetrainConstants.LF_STEER_P,
+                DrivetrainConstants.LF_STEER_I, DrivetrainConstants.LF_STEER_D);
+        rightFront.update(DrivetrainConstants.RF_STEER_P,
+                DrivetrainConstants.RF_STEER_I, DrivetrainConstants.RF_STEER_D);
+        leftRear.update(DrivetrainConstants.LR_STEER_P,
+                DrivetrainConstants.LR_STEER_I, DrivetrainConstants.LR_STEER_D);
+        rightRear.update(DrivetrainConstants.RR_STEER_P,
+                DrivetrainConstants.RR_STEER_I, DrivetrainConstants.RR_STEER_D);
 
         updateDashboard();
     }

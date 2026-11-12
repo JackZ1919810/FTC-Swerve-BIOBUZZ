@@ -8,6 +8,7 @@ import dev.nextftc.core.components.BindingsComponent;
 import dev.nextftc.core.components.SubsystemComponent;
 import dev.nextftc.ftc.Gamepads;
 import dev.nextftc.ftc.NextFTCOpMode;
+import dev.nextftc.ftc.components.BulkReadComponent;
 
 import org.firstinspires.ftc.teamcode.commands.IntakeFollowPower;
 import org.firstinspires.ftc.teamcode.commands.ShooterFollowRPM;
@@ -60,7 +61,8 @@ public class TeleOp extends NextFTCOpMode {
 
         addComponents(
                 new SubsystemComponent(drivetrain, intake, shooter),
-                BindingsComponent.INSTANCE
+                BindingsComponent.INSTANCE,
+                BulkReadComponent.INSTANCE   // one bulk read per hub per loop (MANUAL mode, cleared every loop)
         );
 
         telemetry.addData("Status", "Initialized");
@@ -84,7 +86,7 @@ public class TeleOp extends NextFTCOpMode {
                 () -> intakeHeld() ? SubsystemConstants.IntakePower : 0.0));
 
         shooter.setDefaultCommand(new ShooterFollowRPM(shooter,
-                () -> shootHeld() ? selectedRPM : 0.0));
+                () -> shootHeld() ? selectedRPM : SubsystemConstants.ShooterIdleRPM));
 
         // One action per press
         Gamepads.gamepad1().dpadUp().whenBecomesTrue(() -> changeRPM(+SubsystemConstants.RPMStep));
@@ -103,7 +105,7 @@ public class TeleOp extends NextFTCOpMode {
 
         telemetry.addLine();
         telemetry.addLine("--- Shooter ---");
-        telemetry.addData("State", shootHeld() ? "SHOOTING" : "off");
+        telemetry.addData("State", shootHeld() ? "SHOOTING" : "IDLE");
         telemetry.addData("Selected RPM", "%.0f  (max %.0f)", selectedRPM, shooter.getMaxRPM());
         telemetry.addData("Target RPM", "%.0f", shooter.getTargetRPM());
         telemetry.addData("Actual RPM", "%.0f", shooter.getRPM());

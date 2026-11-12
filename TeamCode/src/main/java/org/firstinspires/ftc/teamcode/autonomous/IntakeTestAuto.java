@@ -6,6 +6,7 @@ import dev.nextftc.core.commands.groups.SequentialGroup;
 import dev.nextftc.core.commands.delays.Delay;
 import dev.nextftc.core.components.SubsystemComponent;
 import dev.nextftc.ftc.NextFTCOpMode;
+import dev.nextftc.ftc.components.BulkReadComponent;
 
 import org.firstinspires.ftc.teamcode.subsystems.IntakeSubsystem;
 import org.firstinspires.ftc.teamcode.commands.IntakeSetPower;
@@ -19,7 +20,7 @@ public class IntakeTestAuto extends NextFTCOpMode{
     public void onInit(){
         intake = new IntakeSubsystem(hardwareMap);
         intake.initialize();
-        addComponents(new SubsystemComponent(intake));
+        addComponents(new SubsystemComponent(intake), BulkReadComponent.INSTANCE);
         telemetry.addData("Is Initialized:", true);
         telemetry.update();
     }

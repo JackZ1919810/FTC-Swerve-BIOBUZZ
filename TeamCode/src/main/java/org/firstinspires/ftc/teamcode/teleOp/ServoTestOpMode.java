@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.teleOp;
 
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
+import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.AnalogInput;
@@ -22,6 +23,12 @@ public class ServoTestOpMode extends LinearOpMode {
         AnalogInput encoderRF = hardwareMap.get(AnalogInput.class, "encoderRF");
         AnalogInput encoderLR = hardwareMap.get(AnalogInput.class, "encoderLR");
         AnalogInput encoderRR = hardwareMap.get(AnalogInput.class, "encoderRR");
+
+        // Bulk caching: AUTO reads all of a hub's sensors in one transfer, and reads
+        // again by itself when the same value is read a second time
+        for (LynxModule hub : hardwareMap.getAll(LynxModule.class)) {
+            hub.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
+        }
 
         telemetry.addLine("Hold button to test servo:");
         telemetry.addLine("A: Left Front, B: Right Front, X: Left Rear, Y: Right Rear");

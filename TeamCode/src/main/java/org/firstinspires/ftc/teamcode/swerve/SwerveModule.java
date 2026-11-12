@@ -39,7 +39,6 @@ public class SwerveModule {
 
         steeringController.enableContinuousInput(-Math.PI, Math.PI);
     }
-
     /**
      * @return current rotation of the module
      */
@@ -60,11 +59,11 @@ public class SwerveModule {
         this.desiredState = SwerveModuleState.optimize(state, getRotation());
     }
 
-    public void update() {
+    public void update(double Steer_P, double Steer_I, double Steer_D) {
         // Live update PID constants from Dashboard
-        steeringController.setP(DrivetrainConstants.STEER_P);
-        steeringController.setI(DrivetrainConstants.STEER_I);
-        steeringController.setD(DrivetrainConstants.STEER_D);
+        steeringController.setP(Steer_P);
+        steeringController.setI(Steer_I);
+        steeringController.setD(Steer_D);
 
         // Convert m/s to motor power [-1.0, 1.0]
         double drivePower = desiredState.speedMetersPerSecond / DrivetrainConstants.MAX_SPEED_MPS;

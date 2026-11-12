@@ -13,6 +13,7 @@ import dev.nextftc.core.components.BindingsComponent;
 import dev.nextftc.core.components.SubsystemComponent;
 import dev.nextftc.ftc.Gamepads;
 import dev.nextftc.ftc.NextFTCOpMode;
+import dev.nextftc.ftc.components.BulkReadComponent;
 
 @TeleOp(name = "Turret Test With Joystick")
 public class TurretFollowStickTestOp extends NextFTCOpMode {
@@ -36,7 +37,7 @@ public class TurretFollowStickTestOp extends NextFTCOpMode {
 
         //Register subsystem component
         addComponents(
-                new SubsystemComponent(turret), BindingsComponent.INSTANCE
+                new SubsystemComponent(turret), BindingsComponent.INSTANCE, BulkReadComponent.INSTANCE
         );
 
         telemetry.addLine("initialized");

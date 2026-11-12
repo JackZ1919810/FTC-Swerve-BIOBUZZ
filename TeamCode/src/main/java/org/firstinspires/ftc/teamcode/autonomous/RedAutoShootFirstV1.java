@@ -11,6 +11,7 @@ import dev.nextftc.core.commands.delays.Delay;
 import dev.nextftc.core.commands.groups.SequentialGroup;
 import dev.nextftc.core.components.SubsystemComponent;
 import dev.nextftc.ftc.NextFTCOpMode;
+import dev.nextftc.ftc.components.BulkReadComponent;
 
 @Autonomous(name = "Red Shoot-First Auto")
 public class RedAutoShootFirstV1 extends NextFTCOpMode {
@@ -23,7 +24,7 @@ public class RedAutoShootFirstV1 extends NextFTCOpMode {
         drive.initialize();
         drive.setPose(new Pose2d(0,0,0));
 
-        addComponents(new SubsystemComponent(drive));
+        addComponents(new SubsystemComponent(drive), BulkReadComponent.INSTANCE);
     }
 
     @Override
