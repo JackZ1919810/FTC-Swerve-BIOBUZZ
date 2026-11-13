@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.subsystems;
 
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.PwmControl;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.ServoImplEx;
 import com.qualcomm.robotcore.util.Range;
 
@@ -48,11 +49,11 @@ public class TurretSubsystem implements Subsystem {
         //turretRight.setPwmRange(AxonPWMRange);
 
         turretLeft.setDirection(ServoImplEx.Direction.FORWARD);
-        //turretRight.setDirection(ServoImplEx.Direction.REVERSE);
+        //turretRight.setDirection(ServoImplEx.Direction.FORWARD);
 
         targetDeg = Double.NaN;
         lastLeftPos = Double.NaN;
-        //lastRightPos = Double.NaN;
+        lastRightPos = Double.NaN;
         lastDirectionDeg = Double.NaN;
         lastCandidateCount = 0;
         unwindCount = 0;
@@ -81,6 +82,7 @@ public class TurretSubsystem implements Subsystem {
         }
 
          */
+
     }
 
     // utility functions: math functions

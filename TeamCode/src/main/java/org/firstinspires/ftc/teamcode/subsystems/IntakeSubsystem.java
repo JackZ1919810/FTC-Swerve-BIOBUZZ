@@ -35,7 +35,7 @@ public class IntakeSubsystem implements Subsystem{
     public void initialize() {
         motorL = hardwareMap.get(DcMotorEx.class, "intakeL");
         motorR = hardwareMap.get(DcMotorEx.class, "intakeR");
-        motorL.setDirection(DcMotorSimple.Direction.FORWARD);
+        motorL.setDirection(DcMotorSimple.Direction.REVERSE);
         motorR.setDirection(DcMotorSimple.Direction.FORWARD);
         motorL.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         motorR.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);

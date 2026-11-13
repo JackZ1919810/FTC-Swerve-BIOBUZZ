@@ -47,15 +47,15 @@ public class DrivetrainConstants {
     public static double LF_STEER_I = 0.0;
     public static double LF_STEER_D = 0.01;
     // RF Steering
-    public static double RF_STEER_P = 0.4;
+    public static double RF_STEER_P = 0.375;
     public static double RF_STEER_I = 0.0;
     public static double RF_STEER_D = 0.01;
     // LR Steering
-    public static double LR_STEER_P = 0.3;
+    public static double LR_STEER_P = 0.375;
     public static double LR_STEER_I = 0.0;
     public static double LR_STEER_D = 0.01;
     // RR Steering
-    public static double RR_STEER_P = 0.475;
+    public static double RR_STEER_P = 0.45;
     public static double RR_STEER_I = 0.0;
     public static double RR_STEER_D = 0.01;
 

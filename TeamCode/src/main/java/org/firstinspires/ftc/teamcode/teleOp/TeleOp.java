@@ -38,6 +38,7 @@ public class TeleOp extends NextFTCOpMode {
     private ShooterSubsystem shooter;
 
     private boolean fieldCentric = true;
+    private boolean ShooterIdle = false;
     private double selectedRPM = SubsystemConstants.defaultRPM;   // changed with the d-pad
 
     @Override
@@ -86,13 +87,15 @@ public class TeleOp extends NextFTCOpMode {
                 () -> intakeHeld() ? SubsystemConstants.IntakePower : 0.0));
 
         shooter.setDefaultCommand(new ShooterFollowRPM(shooter,
-                () -> shootHeld() ? selectedRPM : SubsystemConstants.ShooterIdleRPM));
+                () -> shootHeld() ? selectedRPM : 0.0));
+
 
         // One action per press
         Gamepads.gamepad1().dpadUp().whenBecomesTrue(() -> changeRPM(+SubsystemConstants.RPMStep));
         Gamepads.gamepad1().dpadDown().whenBecomesTrue(() -> changeRPM(-SubsystemConstants.RPMStep));
         Gamepads.gamepad1().y().whenBecomesTrue(() -> drivetrain.resetPose());
         Gamepads.gamepad1().back().whenBecomesTrue(() -> fieldCentric = !fieldCentric);
+        Gamepads.gamepad1().a().whenBecomesTrue(()-> ShooterIdle = !ShooterIdle);
     }
 
     @Override
@@ -109,6 +112,7 @@ public class TeleOp extends NextFTCOpMode {
         telemetry.addData("Selected RPM", "%.0f  (max %.0f)", selectedRPM, shooter.getMaxRPM());
         telemetry.addData("Target RPM", "%.0f", shooter.getTargetRPM());
         telemetry.addData("Actual RPM", "%.0f", shooter.getRPM());
+        telemetry.addData("Battery (V)", "%.2f", shooter.getBatteryVoltage());
         telemetry.addData("At speed", shooter.atSpeed());
         telemetry.addData("Feeding", feedShooter());
 
