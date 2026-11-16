@@ -11,6 +11,7 @@ import dev.nextftc.core.subsystems.Subsystem;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.constants.DrivetrainConstants;
+import org.firstinspires.ftc.teamcode.constants.FieldConstants;
 import org.firstinspires.ftc.teamcode.constants.SubsystemConstants;
 import org.firstinspires.ftc.teamcode.util.ChassisSpeeds;
 import org.firstinspires.ftc.teamcode.util.Pose2d;
@@ -36,6 +37,8 @@ public class SwerveDrivetrain implements Subsystem {
     private SparkFunOTOS otos;
     private boolean isInitialized = false;
     private Pose2d pose = new Pose2d(0,0,0);
+    private boolean poseKnown = false;                       // true once setPose put the robot in the field frame
+    private Rotation2d driverForward = new Rotation2d(0);    // field heading the driver calls "forward"
 
     private SwerveModuleState[] lastDesiredStates = new SwerveModuleState[] {
             new SwerveModuleState(), new SwerveModuleState(), new SwerveModuleState(), new SwerveModuleState()
@@ -74,7 +77,10 @@ public class SwerveDrivetrain implements Subsystem {
         otos.setLinearUnit(DistanceUnit.METER);
         otos.setAngularUnit(AngleUnit.RADIANS);
 
-        SparkFunOTOS.Pose2D offset = new SparkFunOTOS.Pose2D(0, 0, 0);
+        // Sensor position from the robot center (x forward, y left), so the OTOS reports the robot center
+        SparkFunOTOS.Pose2D offset = new SparkFunOTOS.Pose2D(
+                FieldConstants.OtosForwardIn * Pose2d.METERS_PER_INCH,
+                FieldConstants.OtosLeftIn * Pose2d.METERS_PER_INCH, 0);
         otos.setOffset(offset);
 
         otos.setLinearScalar(1.0);
@@ -130,11 +136,38 @@ public class SwerveDrivetrain implements Subsystem {
     }
     public void setPose(Pose2d pose){
         otos.setPosition(new SparkFunOTOS.Pose2D(pose.x, pose.y, pose.heading.getRadians()));
+        poseKnown = true;
         periodic();
     }
 
     public void resetPose() {
         if (isInitialized) otos.resetTracking();
+        poseKnown = false;
+    }
+
+    /** True once setPose has put the robot in the field frame (and resetPose hasn't undone it). */
+    public boolean isPoseKnown() {
+        return poseKnown;
+    }
+
+    /** Sets the field heading the driver calls "forward" for driver-centric drive. */
+    public void setDriverForward(Rotation2d fieldHeading) {
+        driverForward = fieldHeading;
+    }
+
+    /** "Forward" becomes the way the robot faces now. Replaces resetPose() for TeleOp. */
+    public void resetDriverForward() {
+        driverForward = getPose().getHeading();
+    }
+
+    /** Field-centric drive measured from the driver's forward instead of field +X. */
+    public void driveDriverCentric(ChassisSpeeds driverSpeeds) {
+        drive(ChassisSpeeds.fromFieldRelativeSpeeds(
+                driverSpeeds.vxMetersPerSecond,
+                driverSpeeds.vyMetersPerSecond,
+                driverSpeeds.omegaRadiansPerSecond,
+                getPose().getHeading().minus(driverForward)   // robot heading seen from the driver
+        ));
     }
 
     private void updateDashboard() {

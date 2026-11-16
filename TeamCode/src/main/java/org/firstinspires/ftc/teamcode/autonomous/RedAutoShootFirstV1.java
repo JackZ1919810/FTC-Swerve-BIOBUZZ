@@ -3,8 +3,12 @@ package org.firstinspires.ftc.teamcode.autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
 import org.firstinspires.ftc.teamcode.commands.PIDToPosition;
+import org.firstinspires.ftc.teamcode.constants.FieldConstants;
+import org.firstinspires.ftc.teamcode.subsystems.TurretSubsystem;
 import org.firstinspires.ftc.teamcode.swerve.SwerveDrivetrain;
+import org.firstinspires.ftc.teamcode.util.FieldMath;
 import org.firstinspires.ftc.teamcode.util.Pose2d;
+import org.firstinspires.ftc.teamcode.util.PoseStorage;
 import org.firstinspires.ftc.teamcode.util.Rotation2d;
 
 import dev.nextftc.core.commands.delays.Delay;
@@ -17,38 +21,64 @@ import dev.nextftc.ftc.components.BulkReadComponent;
 public class RedAutoShootFirstV1 extends NextFTCOpMode {
 
     private SwerveDrivetrain drive;
+    private TurretSubsystem turret;
+    private Pose2d start;
 
     @Override
     public void onInit() {
         drive = new SwerveDrivetrain(hardwareMap);
         drive.initialize();
-        drive.setPose(new Pose2d(0,0,0));
+        start = FieldConstants.startPose(true);
+        drive.setPose(start);              // the robot is in the field frame from here on
 
-        addComponents(new SubsystemComponent(drive), BulkReadComponent.INSTANCE);
+        // The turret sends nothing during INIT: it keeps reading where it was pointed by hand
+        turret = new TurretSubsystem(hardwareMap);
+        turret.initialize();
+
+        addComponents(new SubsystemComponent(drive, turret), BulkReadComponent.INSTANCE);
+    }
+
+    @Override
+    public void onWaitForStart() {
+        telemetry.addData("Turret zero", TurretSubsystem.getZeroStatus());
+        telemetry.addData("Center / trim", "%.4f / %.4f", TurretSubsystem.centerPos(), TurretSubsystem.rightTrim());
+        telemetry.addData("Reach", "%.0f to %.0f deg  %s", TurretSubsystem.minDeg(), TurretSubsystem.maxDeg(),
+                TurretSubsystem.reachesEveryDirection() ? "OK" : "SHORT: some directions unreachable");
+        telemetry.update();
     }
 
     @Override
     public void onStartButtonPressed(){
+        turret.center();   // first turret command: freezes the hand-set zero and holds the turret forward
 
         new SequentialGroup(
                 //1. Shoot
                 new Delay(1.0),
 
                 //2. Turn 90 and drive to pick up 52in
-                new PIDToPosition(drive, new Pose2d(0,10, Rotation2d.fromDegrees(90))).endAfter(5),
-                new PIDToPosition(drive, Pose2d.fromInches(0, 52, Rotation2d.fromDegrees(90))).endAfter(5),
+                new PIDToPosition(drive, fromStart(0, 10, 90)).endAfter(5),
+                new PIDToPosition(drive, fromStart(0, 52, 90)).endAfter(5),
 
                 //3. Move back to shooting pos. and turn to 0 deg.
-                new PIDToPosition(drive, new Pose2d(0,0,new Rotation2d(0))).endAfter(5),
+                new PIDToPosition(drive, fromStart(0, 0, 0)).endAfter(5),
 
                 //4. Shoot
                 new Delay(1.0),
 
                 //5. Go to parking pos. 96in x+, 52in y+
-                new PIDToPosition(drive, Pose2d.fromInches(30, 30, new Rotation2d(0))),
-                new PIDToPosition(drive, Pose2d.fromInches(96,50, new Rotation2d(0)))
+                new PIDToPosition(drive, fromStart(30, 30, 0)),
+                new PIDToPosition(drive, fromStart(96, 50, 0))
         ).schedule();
 
     }
 
+    @Override
+    public void onStop() {
+        PoseStorage.save(drive.getPose(), true);   // TeleOp continues from here
+    }
+
+    /** A target written the old way (inches from the start: x forward, y left), in field coordinates. */
+    private Pose2d fromStart(double xIn, double yIn, double headingDeg) {
+        return FieldMath.fromStart(start, Pose2d.fromInches(xIn, yIn, Rotation2d.fromDegrees(headingDeg)));
+    }
 }

@@ -63,11 +63,12 @@ public class TurretFollowStickTestOp extends NextFTCOpMode {
         //everything under onUpdate is for telemetry
         double targetDeg = turret.getTargetDeg();
         double servoPos = turret.getCommandPos();
+        double rightServoPos = turret.getRightCommandPos();
 
         telemetry.addData("Mode", wrapEnabled ? "WRAP (unwinds at the limits)" : "CLAMP (stops at the limits)");
         telemetry.addData("Stick u", "%.2f", stickCommand == null ? 0.0 : stickCommand.getStick());
         telemetry.addData("Limits", "%.0f to %.0f deg",
-                SubsystemConstants.TurretMinDeg, SubsystemConstants.TurretMaxDeg);
+                TurretSubsystem.minDeg(), TurretSubsystem.maxDeg());
 
         telemetry.addLine();
         telemetry.addLine("--- Turret ---");
@@ -79,6 +80,13 @@ public class TurretFollowStickTestOp extends NextFTCOpMode {
         telemetry.addLine();
         telemetry.addLine("--- Servo ---");
         telemetry.addData("Left", "p = %.4f   %.0f us", servoPos, pulseUs(servoPos));
+        telemetry.addData("Right", "p = %.4f   %.0f us", rightServoPos, pulseUs(rightServoPos));
+        telemetry.addData("Right trim", "%.4f", TurretSubsystem.rightTrim());
+        telemetry.addData("Zero", TurretSubsystem.getZeroStatus());
+        // When the turret is still, measured should match commanded. Opposite movement = flip that
+        // servo's TurretXFeedbackReversed; a constant gap = recalibrate its feedback center
+        telemetry.addData("Left cmd / measured", "%.4f / %.4f", servoPos, turret.getMeasuredLeftPos());
+        telemetry.addData("Right cmd / measured", "%.4f / %.4f", rightServoPos, turret.getMeasuredRightPos());
 
         telemetry.update();
     }

@@ -33,7 +33,7 @@ public class SwerveDriveCommand extends Command {
 
         ChassisSpeeds speeds = new ChassisSpeeds(vx, vy, omega);
         if (fieldCentricSupplier.getAsBoolean()) {
-            drivetrain.driveFieldCentric(speeds);
+            drivetrain.driveDriverCentric(speeds);   // forward = the driver's forward, not field +X
         } else {
             drivetrain.drive(speeds);
         }

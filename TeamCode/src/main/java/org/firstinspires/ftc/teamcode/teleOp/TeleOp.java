@@ -13,16 +13,23 @@ import dev.nextftc.ftc.components.BulkReadComponent;
 import org.firstinspires.ftc.teamcode.commands.IntakeFollowPower;
 import org.firstinspires.ftc.teamcode.commands.ShooterFollowRPM;
 import org.firstinspires.ftc.teamcode.commands.SwerveDriveCommand;
+import org.firstinspires.ftc.teamcode.commands.TurretAimAtGoal;
+import org.firstinspires.ftc.teamcode.constants.FieldConstants;
 import org.firstinspires.ftc.teamcode.constants.SubsystemConstants;
 import org.firstinspires.ftc.teamcode.subsystems.IntakeSubsystem;
 import org.firstinspires.ftc.teamcode.subsystems.ShooterSubsystem;
+import org.firstinspires.ftc.teamcode.subsystems.TurretSubsystem;
 import org.firstinspires.ftc.teamcode.swerve.SwerveDrivetrain;
 import org.firstinspires.ftc.teamcode.util.Pose2d;
+import org.firstinspires.ftc.teamcode.util.PoseStorage;
+import org.firstinspires.ftc.teamcode.util.UpCell;
 
 /*
  * Controls (all gamepad1):
- *   Left stick / right stick  drive / turn          Y     reset pose
- *   BACK                      toggle field centric
+ *   Left stick / right stick  drive / turn          Y     "forward" = where the robot faces now
+ *   BACK                      toggle field centric  B     turret aim on / off
+ *   D-pad left / right        our upward CELL is on my left / right (pick it in INIT, again after every TIP)
+ *   X                         relocalize: robot is on this alliance's start spot
  *   Right trigger (hold)      intake  + indexer
  *   Left trigger  (hold)      indexer only
  *   Right bumper  (hold)      shooter + indexer (see SubsystemConstants.FeedOnlyAtSpeed)
@@ -36,6 +43,12 @@ public class TeleOp extends NextFTCOpMode {
     private SwerveDrivetrain drivetrain;
     private IntakeSubsystem intake;
     private ShooterSubsystem shooter;
+    private TurretSubsystem turret;
+    private TurretAimAtGoal aimCommand;
+
+    private boolean aimOn = false;        // B toggles
+    private boolean redAlliance = true;   // from the last Autonomous
+    private UpCell upCell = UpCell.UNKNOWN; // which of our two CELLS faces up: the driver sets it
 
     private boolean fieldCentric = true;
     private boolean ShooterIdle = false;
@@ -60,13 +73,40 @@ public class TeleOp extends NextFTCOpMode {
         intake.initialize();
         shooter.initialize();
 
+        turret = new TurretSubsystem(hardwareMap);
+        turret.initialize();
+
+        // Pick up where Autonomous left off. initialize() reset the OTOS, so put the pose back
+        redAlliance = PoseStorage.isRed();
+        if (PoseStorage.hasPose()) {
+            drivetrain.setPose(PoseStorage.take());
+            drivetrain.setDriverForward(FieldConstants.driverForward(redAlliance));
+        }
+
         addComponents(
-                new SubsystemComponent(drivetrain, intake, shooter),
+                new SubsystemComponent(drivetrain, intake, shooter, turret),
                 BindingsComponent.INSTANCE,
                 BulkReadComponent.INSTANCE   // one bulk read per hub per loop (MANUAL mode, cleared every loop)
         );
 
+        // D-pad works from INIT on (BindingsComponent updates during INIT too), so the driver can
+        // pick the CELL during the AUTO-to-TELEOP transition. It only sets a variable: nothing moves.
+        // Press the side where you see our upward CELL; press again after every TIP
+        Gamepads.gamepad1().dpadRight().whenBecomesTrue(() -> upCell = UpCell.onDriversSide(redAlliance, true));
+        Gamepads.gamepad1().dpadLeft().whenBecomesTrue(() -> upCell = UpCell.onDriversSide(redAlliance, false));
+
         telemetry.addData("Status", "Initialized");
+        telemetry.update();
+    }
+
+    @Override
+    public void onWaitForStart() {
+        telemetry.addData("Alliance", redAlliance ? "RED" : "BLUE");
+        telemetry.addData("Upward CELL", upCell == UpCell.UNKNOWN ? "NOT SET: D-pad toward it" : upCell.name());
+        telemetry.addData("Turret zero", TurretSubsystem.getZeroStatus());
+        telemetry.addData("Center / trim", "%.4f / %.4f", TurretSubsystem.centerPos(), TurretSubsystem.rightTrim());
+        telemetry.addData("Reach", "%.0f to %.0f deg  %s", TurretSubsystem.minDeg(), TurretSubsystem.maxDeg(),
+                TurretSubsystem.reachesEveryDirection() ? "OK" : "SHORT: some directions unreachable");
         telemetry.update();
     }
 
@@ -89,11 +129,20 @@ public class TeleOp extends NextFTCOpMode {
         shooter.setDefaultCommand(new ShooterFollowRPM(shooter,
                 () -> shootHeld() ? selectedRPM : 0.0));
 
+        aimCommand = new TurretAimAtGoal(turret, drivetrain, () -> aimOn, () -> redAlliance,
+                () -> upCell);
+        turret.setDefaultCommand(aimCommand);
 
         // One action per press
         Gamepads.gamepad1().dpadUp().whenBecomesTrue(() -> changeRPM(+SubsystemConstants.RPMStep));
         Gamepads.gamepad1().dpadDown().whenBecomesTrue(() -> changeRPM(-SubsystemConstants.RPMStep));
-        Gamepads.gamepad1().y().whenBecomesTrue(() -> drivetrain.resetPose());
+        Gamepads.gamepad1().y().whenBecomesTrue(() -> drivetrain.resetDriverForward());   // keeps the pose
+        Gamepads.gamepad1().b().whenBecomesTrue(() -> aimOn = !aimOn);
+        Gamepads.gamepad1().x().whenBecomesTrue(() -> {
+            // Relocalize: the robot is sitting on this alliance's start spot
+            drivetrain.setPose(FieldConstants.startPose(redAlliance));
+            drivetrain.setDriverForward(FieldConstants.driverForward(redAlliance));   // old "forward" was in the old frame
+        });
         Gamepads.gamepad1().back().whenBecomesTrue(() -> fieldCentric = !fieldCentric);
         Gamepads.gamepad1().a().whenBecomesTrue(()-> ShooterIdle = !ShooterIdle);
     }
@@ -105,6 +154,17 @@ public class TeleOp extends NextFTCOpMode {
         telemetry.addData("Y", "%.2f in", pose.getYInches());
         telemetry.addData("Heading", "%.2f deg", pose.getHeading().getDegrees());
         telemetry.addData("Drive Mode", fieldCentric ? "Field Centric" : "Robot Centric");
+
+        telemetry.addLine();
+        telemetry.addLine("--- Turret aim ---");
+        telemetry.addData("Aim", aimCommand == null ? "OFF" : aimCommand.getStatus());
+        telemetry.addData("Alliance", redAlliance ? "RED" : "BLUE");
+        telemetry.addData("Target", aimCommand == null ? "-" : aimCommand.getTarget());
+        telemetry.addData("Approach", "%.0f deg (max %.0f)",
+                aimCommand == null ? Double.NaN : aimCommand.getApproachDeg(), FieldConstants.MaxApproachDeg);
+        telemetry.addData("Goal distance", "%.1f in", aimCommand == null ? Double.NaN : aimCommand.getDistanceIn());
+        telemetry.addData("Aim angle", "%.1f deg", aimCommand == null ? Double.NaN : aimCommand.getAimDeg());
+        telemetry.addData("Turret target", "%.1f deg", turret.getTargetDeg());
 
         telemetry.addLine();
         telemetry.addLine("--- Shooter ---");
