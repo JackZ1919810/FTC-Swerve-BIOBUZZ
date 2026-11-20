@@ -11,6 +11,7 @@ import dev.nextftc.ftc.NextFTCOpMode;
 import dev.nextftc.ftc.components.BulkReadComponent;
 
 import org.firstinspires.ftc.teamcode.commands.IntakeFollowPower;
+import org.firstinspires.ftc.teamcode.commands.ShooterBlockerFollow;
 import org.firstinspires.ftc.teamcode.commands.ShooterFollowRPM;
 import org.firstinspires.ftc.teamcode.commands.SwerveDriveCommand;
 import org.firstinspires.ftc.teamcode.commands.TurretAimAtGoal;
@@ -31,8 +32,10 @@ import org.firstinspires.ftc.teamcode.util.UpCell;
  *   D-pad left / right        our upward CELL is on my left / right (pick it in INIT, again after every TIP)
  *   X                         relocalize: robot is on this alliance's start spot
  *   Right trigger (hold)      intake  + indexer
- *   Left trigger  (hold)      indexer only
+ *   Left trigger  (hold)      outtake: intake backward (wins over the other intake buttons)
+ *   A             (hold)      slow intake
  *   Right bumper  (hold)      shooter + indexer (see SubsystemConstants.FeedOnlyAtSpeed)
+ *   Left bumper   (hold)      open the blocker (let the ball reach the flywheel)
  *   D-pad up / down           shooter RPM +/- one step
  */
 @com.qualcomm.robotcore.eventloop.opmode.TeleOp(name = "TeleOp")
@@ -51,7 +54,6 @@ public class TeleOp extends NextFTCOpMode {
     private UpCell upCell = UpCell.UNKNOWN; // which of our two CELLS faces up: the driver sets it
 
     private boolean fieldCentric = true;
-    private boolean ShooterIdle = false;
     private double selectedRPM = SubsystemConstants.defaultRPM;   // changed with the d-pad
 
     @Override
@@ -123,11 +125,15 @@ public class TeleOp extends NextFTCOpMode {
                 () -> fieldCentric
         ));
 
-        intake.setDefaultCommand(new IntakeFollowPower(intake,
-                () -> intakeHeld() ? SubsystemConstants.IntakePower : 0.0));
+        intake.setDefaultCommand(new IntakeFollowPower(intake, () -> intakePower()));
 
         shooter.setDefaultCommand(new ShooterFollowRPM(shooter,
                 () -> shootHeld() ? selectedRPM : 0.0));
+
+        // Blocker: runs next to ShooterFollowRPM (it doesn't require the shooter, so it's scheduled
+        // instead of being a default command). For now it opens while the button is held.
+        // Later, open only at speed: () -> shootHeld() && shooter.atSpeed()
+        new ShooterBlockerFollow(shooter, () -> blockerHeld()).schedule();
 
         aimCommand = new TurretAimAtGoal(turret, drivetrain, () -> aimOn, () -> redAlliance,
                 () -> upCell);
@@ -144,7 +150,6 @@ public class TeleOp extends NextFTCOpMode {
             drivetrain.setDriverForward(FieldConstants.driverForward(redAlliance));   // old "forward" was in the old frame
         });
         Gamepads.gamepad1().back().whenBecomesTrue(() -> fieldCentric = !fieldCentric);
-        Gamepads.gamepad1().a().whenBecomesTrue(()-> ShooterIdle = !ShooterIdle);
     }
 
     @Override
@@ -174,6 +179,7 @@ public class TeleOp extends NextFTCOpMode {
         telemetry.addData("Actual RPM", "%.0f", shooter.getRPM());
         telemetry.addData("Battery (V)", "%.2f", shooter.getBatteryVoltage());
         telemetry.addData("At speed", shooter.atSpeed());
+        telemetry.addData("Blocker", shooter.isBlockerOpen() ? "OPEN" : "CLOSED");
         telemetry.addData("Feeding", feedShooter());
 
         telemetry.addLine();
@@ -189,9 +195,29 @@ public class TeleOp extends NextFTCOpMode {
         return gamepad1.right_trigger > TRIGGER_THRESHOLD;
     }
 
+    private boolean outtakeHeld() {
+        return gamepad1.left_trigger > TRIGGER_THRESHOLD;
+    }
+
+    private boolean slowIntakeHeld() {
+        return gamepad1.a;
+    }
+
+    /** Intake power from the buttons. Outtake wins, so a jam can always be cleared. */
+    private double intakePower() {
+        if (outtakeHeld()) return SubsystemConstants.OuttakePower;
+        if (intakeHeld()) return SubsystemConstants.IntakePower;
+        if (slowIntakeHeld()) return SubsystemConstants.SlowIntakePower;
+        return 0.0;
+    }
+
 
     private boolean shootHeld() {
         return gamepad1.right_bumper;
+    }
+
+    private boolean blockerHeld() {
+        return gamepad1.left_bumper;
     }
 
 

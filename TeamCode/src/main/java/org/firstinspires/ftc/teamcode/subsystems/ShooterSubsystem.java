@@ -4,6 +4,9 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.PwmControl;
+import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.ServoImplEx;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.util.Range;
 
@@ -18,10 +21,17 @@ public class ShooterSubsystem implements Subsystem {
     private final HardwareMap hardwareMap;
     private Command defaultCommand = new NullCommand();
     private DcMotorEx motor;
+    private ServoImplEx blocker;
     private boolean isInitialized = false;
 
     private double targetRPM = 0.0;            // what commands ask for
     private double lastTarget = Double.NaN;    // what was last sent to the motor
+    // Blocker: nothing is sent until a command asks, so it doesn't move during INIT.
+    // The open / closed positions are in SubsystemConstants (Dashboard)
+    private boolean blockerCommanded = false;      // false until the first setServoPos
+    private boolean blockerOpen = false;
+    private double lastBlockerPos = Double.NaN;    // what was last sent to the servo
+    private static final PwmControl.PwmRange AxonPWMRange = SubsystemConstants.AxonPWMRange;
 
     // Hub velocity PIDF last sent (NaN = not sent yet), so new values go to the hub only when they change
     private double sentP = Double.NaN;
@@ -48,9 +58,15 @@ public class ShooterSubsystem implements Subsystem {
     @Override
     public void initialize() {
         motor = hardwareMap.get(DcMotorEx.class, "shooter");
+        blocker = hardwareMap.get(ServoImplEx.class, "blocker");
+
+        blocker.setPwmRange(AxonPWMRange);
+
         motor.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);           // setVelocity uses the hub's own velocity PID
         motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT); // stopping disables the motor (see periodic), which always coasts
+
         motor.setDirection(DcMotorSimple.Direction.REVERSE);
+        blocker.setDirection(Servo.Direction.FORWARD);
 
         // Any hub's voltage sensor reads the same battery
         battery = null;
@@ -61,6 +77,9 @@ public class ShooterSubsystem implements Subsystem {
 
         targetRPM = 0.0;
         lastTarget = Double.NaN;
+        blockerCommanded = false;
+        blockerOpen = false;
+        lastBlockerPos = Double.NaN;
 
         // Always send the PIDF at init: don't rely on values left over from an earlier OpMode
         sentP = Double.NaN;
@@ -77,6 +96,9 @@ public class ShooterSubsystem implements Subsystem {
         if (!isInitialized) return;
 
         applyVelocityPIDF();   // picks up Dashboard changes while tuning
+
+        // Blocker before the flywheel: the flywheel code below returns early while the shooter is stopped
+        updateBlocker();
 
         //stop setting for the motor
         if (targetRPM == 0){
@@ -100,6 +122,19 @@ public class ShooterSubsystem implements Subsystem {
     }
 
     /**
+     * Sends the blocker position, only when it changes. The positions are read every loop,
+     * so a Dashboard change moves the servo right away.
+     */
+    private void updateBlocker() {
+        if (!blockerCommanded) return;   // never asked: send nothing
+        double pos = blockerOpen ? SubsystemConstants.BlockerOpenPos : SubsystemConstants.BlockerClosedPos;
+        if (pos != lastBlockerPos) {
+            blocker.setPosition(pos);
+            lastBlockerPos = pos;
+        }
+    }
+
+    /**
      * Sends the velocity PIDF from SubsystemConstants to the hub, only if a value changed since the last send
      * (each send is a hub command, so not every loop). Old hub firmware throws "setting of pidf coefficients
      * not supported": update the Control Hub / Expansion Hub firmware if you see that.
@@ -119,6 +154,17 @@ public class ShooterSubsystem implements Subsystem {
     }
 
     // ----- Abilities that commands can use (all in RPM) -----
+
+    /** Blocker: true = open (the ball can reach the flywheel), false = closed. */
+    public void setServoPos(boolean open){
+        blockerOpen = open;
+        blockerCommanded = true;
+    }
+
+    /** True once the blocker has been told to open (closed or never commanded = false). */
+    public boolean isBlockerOpen() {
+        return blockerCommanded && blockerOpen;
+    }
 
     public void setTargetRPM(double rpm) {
         targetRPM = Range.clip(rpm, 0.0, getMaxRPM());

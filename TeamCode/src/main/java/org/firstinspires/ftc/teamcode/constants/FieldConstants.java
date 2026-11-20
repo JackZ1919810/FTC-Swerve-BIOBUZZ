@@ -20,22 +20,22 @@ public class FieldConstants {
     // The HIVE Structure is at the field center. Each alliance has one HIVE: a seesaw along X with a CELL
     // at each end. Only the upward-facing CELL scores. Its opening is the CELL's outer end, so it faces
     // away from the center: the audience CELL opens toward +X, the rear CELL toward -X (tilted 30 deg up).
-    public static double CellXIn = 0;          // opening center, distance from the field center along X (estimate, +/-1.5: MEASURE)
-    public static double HiveYIn = 12;         // HIVE center line, distance from the field center along Y (25.5 / 2)
+    public static double CellXIn = 17;          // opening center, distance from the field center along X (estimate, +/-1.5: MEASURE)
+    public static double HiveYIn = 13;         // HIVE center line, distance from the field center along Y (25.5 / 2)
     public static double CellOpeningZIn = 58.3;   // opening center height above the TILES (for shooter RPM / hood later)
     public static double MaxApproachDeg = 60;     // farther than this off the opening's facing direction = wrong side
 
     // ----- Auto start poses: the robot center (the point the OTOS tracks). MEASURE these on the field -----
     // G304: start touching the perimeter wall, fully on your own side (red: Y < 0, blue: Y > 0),
     // not in the LOADING ZONE and not touching a FLOWER. The walls are about 70.5 in from the center.
-    // Example: side against the audience wall, one tile toward red, front facing away from the Red Wall.
+    // Red: back against the audience wall, in line with the red HIVE, front facing the rear wall.
     // The heading must match how the robot really sits: TeleOp's field-centric drive and the turret aim use it
-    public static double RedStartXIn = 0;
-    public static double RedStartYIn = 0;
-    public static double RedStartHeadingDeg = 90;     // front facing away from the Red Wall (+Y)
-    public static double BlueStartXIn = -61.5;        // blue = red turned 180 deg about the field center
-    public static double BlueStartYIn = 24;
-    public static double BlueStartHeadingDeg = -90;   // front facing away from the Blue Wall (-Y)
+    public static double RedStartXIn = 65.75;
+    public static double RedStartYIn = -13;
+    public static double RedStartHeadingDeg = 180;     // front facing the rear wall (-X)
+    public static double BlueStartXIn = -65.75;        // blue = red turned 180 deg about the field center
+    public static double BlueStartYIn = 13;
+    public static double BlueStartHeadingDeg = 0;      // front facing the audience (+X)
 
     // OTOS sensor measured from the robot center: forward and left are positive. MEASURE
     public static double OtosForwardIn = 0;

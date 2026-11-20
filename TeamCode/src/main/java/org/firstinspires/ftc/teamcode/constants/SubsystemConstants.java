@@ -8,6 +8,7 @@ public class SubsystemConstants {
     //Intake constants
     public static double IntakePower = 1.0;
     public static double OuttakePower = -0.6;
+    public static double SlowIntakePower = 0.4;   // A in TeleOp: gentler pickup
 
     //Indexer constants
     public static double IndexPower = 1.0;
@@ -54,15 +55,20 @@ public class SubsystemConstants {
     public static double MinRPM = 1000;     // lowest speed the d-pad can select
     public static boolean FeedOnlyAtSpeed = false;  // true = indexer waits until the shooter is at speed
 
+    // Blocker servo ("blocker", Axon, 500-2500 us): holds the ball back until it's time to shoot.
+    // 0.5 -> 1.0 is half the servo's travel (about 175 deg): tune both in Dashboard
+    public static double BlockerOpenPos = 1.0;      // the ball can pass
+    public static double BlockerClosedPos = 0.5;    // the ball is held back
+
     // Shooter velocity PIDF: the hub's own velocity loop that setVelocity uses (units are the hub's, not ours).
     // Live-tunable in Dashboard: ShooterSubsystem sends new values to the hub when they change.
     // Starting values from the REV/FIRST PIDF guide: F = 32767 / max ticks per second, P = 0.1 * F, I = 0.1 * P, D = 0
     // Max speed from ShooterKV: 1 / 0.0001925 = 5195 RPM = 2424 ticks/s, so F = 32767 / 2424 = 13.5
     // Better: measure max ticks/s on a full battery (RUN_WITHOUT_ENCODER, power 1, highest getVelocity) and redo F
-    public static double ShooterVelP = 1.40;
+    public static double ShooterVelP = 1.45;
     public static double ShooterVelI = 0.10;
     public static double ShooterVelD = 0.0;
-    public static double ShooterVelF = 14.05;
+    public static double ShooterVelF = 14.55;
 
     // Shooter PID: NOT used right now. ShooterSubsystem runs on setVelocity (the hub's own velocity PID).
     // Kept for switching back to our own controller (see git commit db26c96):
