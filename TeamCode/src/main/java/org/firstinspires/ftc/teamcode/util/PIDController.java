@@ -44,7 +44,7 @@ public class PIDController {
     }
 
     public double calculate(double measurement) {
-        double currentTime = System.currentTimeMillis() / 1000.0;
+        double currentTime = System.nanoTime() / 1e9;
         if (lastTime == 0) lastTime = currentTime;
         double dt = currentTime - lastTime;
 
@@ -70,6 +70,10 @@ public class PIDController {
 
     public boolean atSetpoint() {
         return Math.abs(lastError) < positionTolerance && Math.abs(lastRate) < velocityTolerance;
+    }
+
+    public boolean atPosition(){
+        return Math.abs(lastError) < positionTolerance;
     }
 
     public void reset() {

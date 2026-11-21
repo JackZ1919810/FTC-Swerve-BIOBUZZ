@@ -38,6 +38,7 @@ import org.firstinspires.ftc.teamcode.util.UpCell;
  *   Left bumper   (hold)      open the blocker (let the ball reach the flywheel)
  *   D-pad up / down           shooter RPM +/- one step
  */
+
 @com.qualcomm.robotcore.eventloop.opmode.TeleOp(name = "TeleOp")
 public class TeleOp extends NextFTCOpMode {
     // How far a trigger must be pressed (0..1) to count as "held"
@@ -176,7 +177,8 @@ public class TeleOp extends NextFTCOpMode {
         telemetry.addData("State", shootHeld() ? "SHOOTING" : "IDLE");
         telemetry.addData("Selected RPM", "%.0f  (max %.0f)", selectedRPM, shooter.getMaxRPM());
         telemetry.addData("Target RPM", "%.0f", shooter.getTargetRPM());
-        telemetry.addData("Actual RPM", "%.0f", shooter.getRPM());
+        telemetry.addData("Actual Left RPM", "%.0f", shooter.getLeftRPM());
+        telemetry.addData("Actual Right RPM", "%.0f", shooter.getRightRPM());
         telemetry.addData("Battery (V)", "%.2f", shooter.getBatteryVoltage());
         telemetry.addData("At speed", shooter.atSpeed());
         telemetry.addData("Blocker", shooter.isBlockerOpen() ? "OPEN" : "CLOSED");
@@ -211,7 +213,6 @@ public class TeleOp extends NextFTCOpMode {
         return 0.0;
     }
 
-
     private boolean shootHeld() {
         return gamepad1.right_bumper;
     }
@@ -219,7 +220,6 @@ public class TeleOp extends NextFTCOpMode {
     private boolean blockerHeld() {
         return gamepad1.left_bumper;
     }
-
 
     private boolean feedShooter() {
         if (!shootHeld()) return false;
