@@ -46,6 +46,10 @@ public class DrivetrainPIDController {
         return xController.atSetpoint() && yController.atSetpoint() && thetaController.atSetpoint();
     }
 
+    public boolean atPosition() {
+        return xController.atPosition() && yController.atPosition() && thetaController.atPosition();
+    }
+
     public void reset() {
         xController.reset();
         yController.reset();

@@ -57,6 +57,10 @@ public class Translation2d {
         return Math.hypot(x - other.x, y - other.y);
     }
 
+    public double dot(Translation2d other) {
+        return x * other.x + y * other.y;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof Translation2d) {

@@ -14,16 +14,22 @@ import org.firstinspires.ftc.teamcode.constants.DrivetrainConstants;
 import org.firstinspires.ftc.teamcode.constants.FieldConstants;
 import org.firstinspires.ftc.teamcode.constants.SubsystemConstants;
 import org.firstinspires.ftc.teamcode.util.ChassisSpeeds;
+import org.firstinspires.ftc.teamcode.util.Path;
 import org.firstinspires.ftc.teamcode.util.Pose2d;
 import org.firstinspires.ftc.teamcode.util.Rotation2d;
 import org.firstinspires.ftc.teamcode.util.SwerveDriveKinematics;
 import org.firstinspires.ftc.teamcode.util.SwerveModuleState;
+import org.firstinspires.ftc.teamcode.util.Translation2d;
 
 public class SwerveDrivetrain implements Subsystem {
     private final SwerveModule leftFront = new SwerveModule();
     private final SwerveModule rightFront = new SwerveModule();
     private final SwerveModule leftRear = new SwerveModule();
     private final SwerveModule rightRear = new SwerveModule();
+    private final SparkFunOTOS.Pose2D otosPos = new SparkFunOTOS.Pose2D();
+    private final SparkFunOTOS.Pose2D otosVel = new SparkFunOTOS.Pose2D();
+    private final SparkFunOTOS.Pose2D otosAcc = new SparkFunOTOS.Pose2D();
+    private ChassisSpeeds fieldVelocity = new ChassisSpeeds();
 
     private final SwerveDriveKinematics kinematics = new SwerveDriveKinematics(
             DrivetrainConstants.LEFT_FRONT_LOCATION,
@@ -39,6 +45,9 @@ public class SwerveDrivetrain implements Subsystem {
     private Pose2d pose = new Pose2d(0,0,0);
     private boolean poseKnown = false;                       // true once setPose put the robot in the field frame
     private Rotation2d driverForward = new Rotation2d(0);    // field heading the driver calls "forward"
+    private Path overlayPath;
+    private Translation2d overlayTarget;
+    private double overlayCrossTrack;
 
     private SwerveModuleState[] lastDesiredStates = new SwerveModuleState[] {
             new SwerveModuleState(), new SwerveModuleState(), new SwerveModuleState(), new SwerveModuleState()
@@ -94,8 +103,10 @@ public class SwerveDrivetrain implements Subsystem {
     public void periodic() {
         if (!isInitialized) return;
 
-        SparkFunOTOS.Pose2D otosPose = otos.getPosition();
-        pose = new Pose2d(otosPose.x, otosPose.y, new Rotation2d(otosPose.h));
+        // One I2C read for position, velocity and acceleration
+        otos.getPosVelAcc(otosPos, otosVel, otosAcc);
+        pose = new Pose2d(otosPos.x, otosPos.y, new Rotation2d(otosPos.h));
+        fieldVelocity = new ChassisSpeeds(otosVel.x, otosVel.y, otosVel.h);
 
         leftFront.update(DrivetrainConstants.LF_STEER_P,
                 DrivetrainConstants.LF_STEER_I, DrivetrainConstants.LF_STEER_D);
@@ -145,6 +156,11 @@ public class SwerveDrivetrain implements Subsystem {
         poseKnown = false;
     }
 
+    /** Measured robot velocity from the OTOS (m/s, rad/s). Used for "has it stopped?" checks. */
+    public ChassisSpeeds getFieldVelocity() {
+        return fieldVelocity;
+    }
+
     /** True once setPose has put the robot in the field frame (and resetPose hasn't undone it). */
     public boolean isPoseKnown() {
         return poseKnown;
@@ -168,6 +184,12 @@ public class SwerveDrivetrain implements Subsystem {
                 driverSpeeds.omegaRadiansPerSecond,
                 getPose().getHeading().minus(driverForward)   // robot heading seen from the driver
         ));
+    }
+
+    public void setPathOverlay(Path path, Translation2d target, double crossTrackMeters){
+        overlayPath = path;
+        overlayTarget = target;
+        overlayCrossTrack = crossTrackMeters;
     }
 
     private void updateDashboard() {
@@ -200,17 +222,37 @@ public class SwerveDrivetrain implements Subsystem {
                 lastDesiredStates[3].angle.getRadians(), lastDesiredStates[3].speedMetersPerSecond
         ));
 
+
         // Draw on Dashboard Field
         Canvas fieldOverlay = packet.fieldOverlay();
         double xInches = pose.x * 39.3701;
         double yInches = pose.y * 39.3701;
-        
         fieldOverlay.setStroke("#3F51B5");
         fieldOverlay.strokeCircle(xInches, yInches, 9);
         fieldOverlay.setStroke("#FF5722");
         double lineX = xInches + Math.cos(pose.heading.getRadians()) * 12;
         double lineY = yInches + Math.sin(pose.heading.getRadians()) * 12;
         fieldOverlay.strokeLine(xInches, yInches, lineX, lineY);
+
+        packet.put("Speed (m/s)", Math.hypot(fieldVelocity.vxMetersPerSecond, fieldVelocity.vyMetersPerSecond));
+
+        if (overlayPath != null) {
+            int n = overlayPath.numSegments() + 1;
+            double[] xs = new double[n];
+            double[] ys = new double[n];
+            for (int i = 0; i < n; i++) {
+                xs[i] = overlayPath.xy(i).getX() / Pose2d.METERS_PER_INCH;
+                ys[i] = overlayPath.xy(i).getY() / Pose2d.METERS_PER_INCH;
+            }
+            fieldOverlay.setStroke("#9E9E9E");
+            fieldOverlay.strokePolyline(xs, ys);
+            packet.put("Path cross-track (in)", overlayCrossTrack / Pose2d.METERS_PER_INCH);
+        }
+        if (overlayTarget != null) {
+            fieldOverlay.setFill("#FF5722");
+            fieldOverlay.fillCircle(overlayTarget.getX() / Pose2d.METERS_PER_INCH,
+                    overlayTarget.getY() / Pose2d.METERS_PER_INCH, 2);
+        }
 
         FtcDashboard.getInstance().sendTelemetryPacket(packet);
     }

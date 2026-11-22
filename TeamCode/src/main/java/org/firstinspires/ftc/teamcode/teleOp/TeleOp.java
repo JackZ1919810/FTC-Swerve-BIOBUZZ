@@ -21,8 +21,10 @@ import org.firstinspires.ftc.teamcode.subsystems.IntakeSubsystem;
 import org.firstinspires.ftc.teamcode.subsystems.ShooterSubsystem;
 import org.firstinspires.ftc.teamcode.subsystems.TurretSubsystem;
 import org.firstinspires.ftc.teamcode.swerve.SwerveDrivetrain;
+import org.firstinspires.ftc.teamcode.util.Path;
 import org.firstinspires.ftc.teamcode.util.Pose2d;
 import org.firstinspires.ftc.teamcode.util.PoseStorage;
+import org.firstinspires.ftc.teamcode.util.Translation2d;
 import org.firstinspires.ftc.teamcode.util.UpCell;
 
 /*
@@ -97,7 +99,6 @@ public class TeleOp extends NextFTCOpMode {
         // Press the side where you see our upward CELL; press again after every TIP
         Gamepads.gamepad1().dpadRight().whenBecomesTrue(() -> upCell = UpCell.onDriversSide(redAlliance, true));
         Gamepads.gamepad1().dpadLeft().whenBecomesTrue(() -> upCell = UpCell.onDriversSide(redAlliance, false));
-
         telemetry.addData("Status", "Initialized");
         telemetry.update();
     }

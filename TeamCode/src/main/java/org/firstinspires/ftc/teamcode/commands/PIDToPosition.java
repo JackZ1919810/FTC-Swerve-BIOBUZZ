@@ -37,7 +37,10 @@ public class PIDToPosition extends Command {
 
     @Override
     public boolean isDone() {
-        return controller.atSetpoint();
+        ChassisSpeeds v = drivetrain.getFieldVelocity();
+        return controller.atPosition()
+                && Math.hypot(v.vxMetersPerSecond, v.vyMetersPerSecond) < DrivetrainConstants.SETTLE_SPEED
+                && Math.abs(v.omegaRadiansPerSecond) < DrivetrainConstants.SETTLE_TURN_RATE;
     }
 
     @Override

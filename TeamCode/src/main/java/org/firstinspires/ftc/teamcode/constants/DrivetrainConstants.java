@@ -59,6 +59,15 @@ public class DrivetrainConstants {
     public static double RR_STEER_I = 0.0;
     public static double RR_STEER_D = 0.01;
 
+    // "Settled" means slower than this, measured by the OTOS
+    public static double SETTLE_SPEED = 0.05;      // m/s (about 2 in/s)
+    public static double SETTLE_TURN_RATE = 0.1;   // rad/s (about 6 deg/s)
+
+    // Path following (FollowPath). Meters, seconds, radians.
+    public static double PATH_LOOKAHEAD = 0.25;  // m (10 in): how far ahead the robot aims
+    public static double PATH_MAX_SPEED = 0.5;   // m/s: start slow, raise once it works
+    public static double PATH_MAX_ACCEL = 1.0;   // m/s^2: also sets how hard corners are taken
+    public static double PATH_HANDOFF   = 0.10;  // m (4 in): the final PID takes over inside this
 
     public static final DrivetrainPIDConstants autoPIDConstants = new DrivetrainPIDConstants(
             new PIDCoefficients(6.5, 0.0, 0.3), //this P value make the wheel adjusting a bit, a higher P value would decrease that.
