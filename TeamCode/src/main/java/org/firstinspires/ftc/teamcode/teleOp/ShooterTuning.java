@@ -61,7 +61,7 @@ public class ShooterTuning extends NextFTCOpMode {
         telemetry.addData("State", shootHeld() ? "SHOOTING" : "IDLE");
         telemetry.addData("Selected RPM", "%.0f  (max %.0f)", selectedRPM, shooter.getMaxRPM());
         telemetry.addData("Target RPM", "%.0f", shooter.getTargetRPM());
-        telemetry.addData("Actual RPM", "%.0f", shooter.getRPM());
+        telemetry.addData("Actual RPM", "%.0f", shooter.getLeftRPM());
         telemetry.addData("Battery (V)", "%.2f", shooter.getBatteryVoltage());
         telemetry.addData("At speed", shooter.atSpeed());
 

@@ -60,6 +60,11 @@ public class SubsystemConstants {
     public static double BlockerOpenPos = 1.0;      // the ball can pass
     public static double BlockerClosedPos = 0.5;    // the ball is held back
 
+    // Flower intake servo ("flower", Axon, 500-2500 us): opens on a command and stays open until the next one.
+    // Placeholders: 0.5 -> 1.0 is about 175 deg of travel, tune both in Dashboard
+    public static double FlowerOpenPos = 1.0;
+    public static double FlowerClosedPos = 0.5;
+
     // Shooter velocity PIDF: NOT used right now. ShooterSubsystem runs on our own PID below (RUN_WITHOUT_ENCODER).
     // Kept for switching back to setVelocity (the hub's own velocity loop; units are the hub's, not ours).
     // Starting values from the REV/FIRST PIDF guide: F = 32767 / max ticks per second, P = 0.1 * F, I = 0.1 * P, D = 0

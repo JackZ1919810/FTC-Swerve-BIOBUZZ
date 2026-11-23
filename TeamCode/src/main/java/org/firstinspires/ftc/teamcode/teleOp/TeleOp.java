@@ -10,6 +10,7 @@ import dev.nextftc.ftc.Gamepads;
 import dev.nextftc.ftc.NextFTCOpMode;
 import dev.nextftc.ftc.components.BulkReadComponent;
 
+import org.firstinspires.ftc.teamcode.commands.FlowerToggle;
 import org.firstinspires.ftc.teamcode.commands.IntakeFollowPower;
 import org.firstinspires.ftc.teamcode.commands.ShooterBlockerFollow;
 import org.firstinspires.ftc.teamcode.commands.ShooterFollowRPM;
@@ -17,6 +18,7 @@ import org.firstinspires.ftc.teamcode.commands.SwerveDriveCommand;
 import org.firstinspires.ftc.teamcode.commands.TurretAimAtGoal;
 import org.firstinspires.ftc.teamcode.constants.FieldConstants;
 import org.firstinspires.ftc.teamcode.constants.SubsystemConstants;
+import org.firstinspires.ftc.teamcode.subsystems.FlowerIntakeSubsystem;
 import org.firstinspires.ftc.teamcode.subsystems.IntakeSubsystem;
 import org.firstinspires.ftc.teamcode.subsystems.ShooterSubsystem;
 import org.firstinspires.ftc.teamcode.subsystems.TurretSubsystem;
@@ -28,7 +30,7 @@ import org.firstinspires.ftc.teamcode.util.Translation2d;
 import org.firstinspires.ftc.teamcode.util.UpCell;
 
 /*
- * Controls (all gamepad1):
+ * Controls (gamepad1, except the last line):
  *   Left stick / right stick  drive / turn          Y     "forward" = where the robot faces now
  *   BACK                      toggle field centric  B     turret aim on / off
  *   D-pad left / right        our upward CELL is on my left / right (pick it in INIT, again after every TIP)
@@ -39,6 +41,7 @@ import org.firstinspires.ftc.teamcode.util.UpCell;
  *   Right bumper  (hold)      shooter + indexer (see SubsystemConstants.FeedOnlyAtSpeed)
  *   Left bumper   (hold)      open the blocker (let the ball reach the flywheel)
  *   D-pad up / down           shooter RPM +/- one step
+ *   Gamepad 2 A               flower intake: press to open, press again to close
  */
 
 @com.qualcomm.robotcore.eventloop.opmode.TeleOp(name = "TeleOp")
@@ -50,6 +53,7 @@ public class TeleOp extends NextFTCOpMode {
     private IntakeSubsystem intake;
     private ShooterSubsystem shooter;
     private TurretSubsystem turret;
+    private FlowerIntakeSubsystem flower;
     private TurretAimAtGoal aimCommand;
 
     private boolean aimOn = false;        // B toggles
@@ -81,6 +85,9 @@ public class TeleOp extends NextFTCOpMode {
         turret = new TurretSubsystem(hardwareMap);
         turret.initialize();
 
+        flower = new FlowerIntakeSubsystem(hardwareMap);
+        flower.initialize();
+
         // Pick up where Autonomous left off. initialize() reset the OTOS, so put the pose back
         redAlliance = PoseStorage.isRed();
         if (PoseStorage.hasPose()) {
@@ -89,7 +96,7 @@ public class TeleOp extends NextFTCOpMode {
         }
 
         addComponents(
-                new SubsystemComponent(drivetrain, intake, shooter, turret),
+                new SubsystemComponent(drivetrain, intake, shooter, turret, flower),
                 BindingsComponent.INSTANCE,
                 BulkReadComponent.INSTANCE   // one bulk read per hub per loop (MANUAL mode, cleared every loop)
         );
@@ -141,7 +148,11 @@ public class TeleOp extends NextFTCOpMode {
                 () -> upCell);
         turret.setDefaultCommand(aimCommand);
 
+        // Flower: closed and held from START, so it's in a known state (it got no signal during INIT)
+        flower.setOpen(false);
+
         // One action per press
+        Gamepads.gamepad2().a().whenBecomesTrue(new FlowerToggle(flower));   // open / close, stays until the next press
         Gamepads.gamepad1().dpadUp().whenBecomesTrue(() -> changeRPM(+SubsystemConstants.RPMStep));
         Gamepads.gamepad1().dpadDown().whenBecomesTrue(() -> changeRPM(-SubsystemConstants.RPMStep));
         Gamepads.gamepad1().y().whenBecomesTrue(() -> drivetrain.resetDriverForward());   // keeps the pose
@@ -188,6 +199,7 @@ public class TeleOp extends NextFTCOpMode {
         telemetry.addLine();
         telemetry.addLine("--- Intake / Indexer ---");
         telemetry.addData("Intake power", "%.2f", intake.getPower());
+        telemetry.addData("Flower", flower.isOpen() ? "OPEN" : "CLOSED");
 
         telemetry.update();
     }
