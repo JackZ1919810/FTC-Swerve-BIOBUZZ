@@ -152,11 +152,11 @@ public class TeleOp extends NextFTCOpMode {
         flower.setOpen(false);
 
         // One action per press
-        Gamepads.gamepad2().a().whenBecomesTrue(new FlowerToggle(flower));   // open / close, stays until the next press
+        Gamepads.gamepad1().a().whenBecomesTrue(new FlowerToggle(flower));   // open / close, stays until the next press
         Gamepads.gamepad1().dpadUp().whenBecomesTrue(() -> changeRPM(+SubsystemConstants.RPMStep));
         Gamepads.gamepad1().dpadDown().whenBecomesTrue(() -> changeRPM(-SubsystemConstants.RPMStep));
         Gamepads.gamepad1().y().whenBecomesTrue(() -> drivetrain.resetDriverForward());   // keeps the pose
-        Gamepads.gamepad1().b().whenBecomesTrue(() -> aimOn = !aimOn);
+        Gamepads.gamepad2().x().whenBecomesTrue(() -> aimOn = !aimOn);
         Gamepads.gamepad1().x().whenBecomesTrue(() -> {
             // Relocalize: the robot is sitting on this alliance's start spot
             drivetrain.setPose(FieldConstants.startPose(redAlliance));
@@ -207,15 +207,15 @@ public class TeleOp extends NextFTCOpMode {
     // ----- Button helpers: the one place that says which button does what -----
 
     private boolean intakeHeld() {
-        return gamepad1.right_trigger > TRIGGER_THRESHOLD;
+        return gamepad2.right_trigger > TRIGGER_THRESHOLD;
     }
 
     private boolean outtakeHeld() {
-        return gamepad1.left_trigger > TRIGGER_THRESHOLD;
+        return gamepad2.left_bumper;
     }
 
     private boolean slowIntakeHeld() {
-        return gamepad1.a;
+        return gamepad2.right_bumper;
     }
 
     /** Intake power from the buttons. Outtake wins, so a jam can always be cleared. */
@@ -227,11 +227,11 @@ public class TeleOp extends NextFTCOpMode {
     }
 
     private boolean shootHeld() {
-        return gamepad1.right_bumper;
+        return gamepad2.left_trigger > TRIGGER_THRESHOLD;
     }
 
     private boolean blockerHeld() {
-        return gamepad1.left_bumper;
+        return gamepad2.left_bumper;
     }
 
     private boolean feedShooter() {
