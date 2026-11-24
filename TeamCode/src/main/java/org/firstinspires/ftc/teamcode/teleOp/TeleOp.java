@@ -23,6 +23,8 @@ import org.firstinspires.ftc.teamcode.subsystems.IntakeSubsystem;
 import org.firstinspires.ftc.teamcode.subsystems.ShooterSubsystem;
 import org.firstinspires.ftc.teamcode.subsystems.TurretSubsystem;
 import org.firstinspires.ftc.teamcode.swerve.SwerveDrivetrain;
+import org.firstinspires.ftc.teamcode.util.FieldMath;
+import org.firstinspires.ftc.teamcode.util.InterpolationTable;
 import org.firstinspires.ftc.teamcode.util.Path;
 import org.firstinspires.ftc.teamcode.util.Pose2d;
 import org.firstinspires.ftc.teamcode.util.PoseStorage;
@@ -30,18 +32,28 @@ import org.firstinspires.ftc.teamcode.util.Translation2d;
 import org.firstinspires.ftc.teamcode.util.UpCell;
 
 /*
- * Controls (gamepad1, except the last line):
- *   Left stick / right stick  drive / turn          Y     "forward" = where the robot faces now
- *   BACK                      toggle field centric  B     turret aim on / off
+ * Controls (PS controller names, SDK names in brackets)
+ *
+ * Gamepad 1, driver:
+ *   Left stick                drive (translation)
+ *   Right stick               turn (rotation)
+ *   Square [X]                field reset: robot is on this alliance's start spot
+ *   Cross [A]                 FLOWER intake: press to open, press again to close
+ *   Triangle [Y]              "forward" = where the robot faces now (keeps the pose)
+ *   Share [BACK]              toggle field centric
+ *
+ * Gamepad 2, operator:
+ *   L2 (hold)                 shooter
+ *   L1 (hold)                 outtake: intake backward (wins over the other intake buttons)
+ *   R2 (hold)                 full-speed intake
+ *   R1 (hold)                 shooter feed: slow-speed intake + blocker open
+ *   Square [X]                turret: center & disable / press again to aim
  *   D-pad left / right        our upward CELL is on my left / right (pick it in INIT, again after every TIP)
- *   X                         relocalize: robot is on this alliance's start spot
- *   Right trigger (hold)      intake  + indexer
- *   Left trigger  (hold)      outtake: intake backward (wins over the other intake buttons)
- *   A             (hold)      slow intake
- *   Right bumper  (hold)      shooter + indexer (see SubsystemConstants.FeedOnlyAtSpeed)
- *   Left bumper   (hold)      open the blocker (let the ball reach the flywheel)
- *   D-pad up / down           shooter RPM +/- one step
- *   Gamepad 2 A               flower intake: press to open, press again to close
+ *   D-pad up / down           shooter RPM +/- one step (table on: a trim added to the table's RPM)
+ *
+ * Shooter RPM: SubsystemConstants.ShooterUseTable = true picks it from the distance to our CELL
+ * (ShooterTableDistIn / ShooterTableRPM). With the table off, or no distance yet (no pose / CELL not picked),
+ * it's the D-pad RPM.
  */
 
 @com.qualcomm.robotcore.eventloop.opmode.TeleOp(name = "TeleOp")
@@ -56,12 +68,13 @@ public class TeleOp extends NextFTCOpMode {
     private FlowerIntakeSubsystem flower;
     private TurretAimAtGoal aimCommand;
 
-    private boolean aimOn = false;        // B toggles
+    private boolean aimOn = true;         // gamepad 2 Square toggles: false = turret centered and held there
     private boolean redAlliance = true;   // from the last Autonomous
     private UpCell upCell = UpCell.UNKNOWN; // which of our two CELLS faces up: the driver sets it
 
     private boolean fieldCentric = true;
-    private double selectedRPM = SubsystemConstants.defaultRPM;   // changed with the d-pad
+    private double selectedRPM = SubsystemConstants.defaultRPM;   // changed with the d-pad (table off)
+    private double tableTrimRPM = 0.0;                            // changed with the d-pad (table on)
 
     @Override
     public void onInit() {
@@ -104,8 +117,8 @@ public class TeleOp extends NextFTCOpMode {
         // D-pad works from INIT on (BindingsComponent updates during INIT too), so the driver can
         // pick the CELL during the AUTO-to-TELEOP transition. It only sets a variable: nothing moves.
         // Press the side where you see our upward CELL; press again after every TIP
-        Gamepads.gamepad1().dpadRight().whenBecomesTrue(() -> upCell = UpCell.onDriversSide(redAlliance, true));
-        Gamepads.gamepad1().dpadLeft().whenBecomesTrue(() -> upCell = UpCell.onDriversSide(redAlliance, false));
+        Gamepads.gamepad2().dpadRight().whenBecomesTrue(() -> upCell = UpCell.onDriversSide(redAlliance, true));
+        Gamepads.gamepad2().dpadLeft().whenBecomesTrue(() -> upCell = UpCell.onDriversSide(redAlliance, false));
         telemetry.addData("Status", "Initialized");
         telemetry.update();
     }
@@ -137,12 +150,12 @@ public class TeleOp extends NextFTCOpMode {
         intake.setDefaultCommand(new IntakeFollowPower(intake, () -> intakePower()));
 
         shooter.setDefaultCommand(new ShooterFollowRPM(shooter,
-                () -> shootHeld() ? selectedRPM : 0.0));
+                () -> shootHeld() ? shooterRPM() : 0.0));
 
         // Blocker: runs next to ShooterFollowRPM (it doesn't require the shooter, so it's scheduled
-        // instead of being a default command). For now it opens while the button is held.
-        // Later, open only at speed: () -> shootHeld() && shooter.atSpeed()
-        new ShooterBlockerFollow(shooter, () -> blockerHeld()).schedule();
+        // instead of being a default command). Open while the shooter feed (R1) is held, the same
+        // button that runs the slow intake. Later, open only at speed: () -> feedHeld() && shooter.atSpeed()
+        new ShooterBlockerFollow(shooter, () -> feedHeld()).schedule();
 
         aimCommand = new TurretAimAtGoal(turret, drivetrain, () -> aimOn, () -> redAlliance,
                 () -> upCell);
@@ -153,9 +166,10 @@ public class TeleOp extends NextFTCOpMode {
 
         // One action per press
         Gamepads.gamepad1().a().whenBecomesTrue(new FlowerToggle(flower));   // open / close, stays until the next press
-        Gamepads.gamepad1().dpadUp().whenBecomesTrue(() -> changeRPM(+SubsystemConstants.RPMStep));
-        Gamepads.gamepad1().dpadDown().whenBecomesTrue(() -> changeRPM(-SubsystemConstants.RPMStep));
+        Gamepads.gamepad2().dpadUp().whenBecomesTrue(() -> changeRPM(+SubsystemConstants.RPMStep));
+        Gamepads.gamepad2().dpadDown().whenBecomesTrue(() -> changeRPM(-SubsystemConstants.RPMStep));
         Gamepads.gamepad1().y().whenBecomesTrue(() -> drivetrain.resetDriverForward());   // keeps the pose
+        // Turret: aiming starts on. Off = TurretAimAtGoal centers the turret and holds it there
         Gamepads.gamepad2().x().whenBecomesTrue(() -> aimOn = !aimOn);
         Gamepads.gamepad1().x().whenBecomesTrue(() -> {
             // Relocalize: the robot is sitting on this alliance's start spot
@@ -175,26 +189,29 @@ public class TeleOp extends NextFTCOpMode {
 
         telemetry.addLine();
         telemetry.addLine("--- Turret aim ---");
+        telemetry.addData("Turret", aimOn ? "AIM ENABLED" : "CENTERED + DISABLED (gamepad 2 Square to aim)");
         telemetry.addData("Aim", aimCommand == null ? "OFF" : aimCommand.getStatus());
         telemetry.addData("Alliance", redAlliance ? "RED" : "BLUE");
         telemetry.addData("Target", aimCommand == null ? "-" : aimCommand.getTarget());
         telemetry.addData("Approach", "%.0f deg (max %.0f)",
                 aimCommand == null ? Double.NaN : aimCommand.getApproachDeg(), FieldConstants.MaxApproachDeg);
-        telemetry.addData("Goal distance", "%.1f in", aimCommand == null ? Double.NaN : aimCommand.getDistanceIn());
+        telemetry.addData("Shot distance", "%.1f in  (for the RPM table)", shotDistanceIn());
         telemetry.addData("Aim angle", "%.1f deg", aimCommand == null ? Double.NaN : aimCommand.getAimDeg());
         telemetry.addData("Turret target", "%.1f deg", turret.getTargetDeg());
 
         telemetry.addLine();
         telemetry.addLine("--- Shooter ---");
         telemetry.addData("State", shootHeld() ? "SHOOTING" : "IDLE");
+        telemetry.addData("RPM source", rpmSource());
         telemetry.addData("Selected RPM", "%.0f  (max %.0f)", selectedRPM, shooter.getMaxRPM());
         telemetry.addData("Target RPM", "%.0f", shooter.getTargetRPM());
         telemetry.addData("Actual Left RPM", "%.0f", shooter.getLeftRPM());
         telemetry.addData("Actual Right RPM", "%.0f", shooter.getRightRPM());
+        telemetry.addData("Encoders", shooter.hasEncoderMismatch() ? "MISMATCH: check cables / directions" : "OK");
         telemetry.addData("Battery (V)", "%.2f", shooter.getBatteryVoltage());
         telemetry.addData("At speed", shooter.atSpeed());
         telemetry.addData("Blocker", shooter.isBlockerOpen() ? "OPEN" : "CLOSED");
-        telemetry.addData("Feeding", feedShooter());
+        telemetry.addData("Feeding", feedHeld());
 
         telemetry.addLine();
         telemetry.addLine("--- Intake / Indexer ---");
@@ -214,7 +231,8 @@ public class TeleOp extends NextFTCOpMode {
         return gamepad2.left_bumper;
     }
 
-    private boolean slowIntakeHeld() {
+    /** Shooter feed (R1): slow-speed intake and the blocker open, together. */
+    private boolean feedHeld() {
         return gamepad2.right_bumper;
     }
 
@@ -222,7 +240,7 @@ public class TeleOp extends NextFTCOpMode {
     private double intakePower() {
         if (outtakeHeld()) return SubsystemConstants.OuttakePower;
         if (intakeHeld()) return SubsystemConstants.IntakePower;
-        if (slowIntakeHeld()) return SubsystemConstants.SlowIntakePower;
+        if (feedHeld()) return SubsystemConstants.SlowIntakePower;
         return 0.0;
     }
 
@@ -230,19 +248,53 @@ public class TeleOp extends NextFTCOpMode {
         return gamepad2.left_trigger > TRIGGER_THRESHOLD;
     }
 
-    private boolean blockerHeld() {
-        return gamepad2.left_bumper;
-    }
-
-    private boolean feedShooter() {
-        if (!shootHeld()) return false;
-        return !SubsystemConstants.FeedOnlyAtSpeed || shooter.atSpeed();
-    }
-
+    /** D-pad up / down: with the table on it trims the table's RPM, otherwise it picks the RPM. */
     private void changeRPM(double delta) {
+        if (SubsystemConstants.ShooterUseTable) {
+            tableTrimRPM += delta;   // the final RPM is still clipped to 0..max by the shooter
+            return;
+        }
         // Range.clip needs min <= max; if min were bigger, the result would jump between the two
         double min = SubsystemConstants.MinRPM;
         double max = Math.max(min, shooter.getMaxRPM());
         selectedRPM = Range.clip(selectedRPM + delta, min, max);
+    }
+
+    // ----- Shooter RPM from distance (interpolation table) -----
+
+    /**
+     * Floor distance from the turret pivot to our upward CELL, in inches (the same distance the aim uses).
+     * NaN when there's no pose yet (no Auto, X not pressed) or the CELL isn't picked (D-pad).
+     */
+    private double shotDistanceIn() {
+        if (!drivetrain.isPoseKnown() || upCell == UpCell.UNKNOWN) return Double.NaN;
+        Translation2d pivot = FieldMath.turretPivot(drivetrain.getPose(),
+                FieldConstants.TurretPivotForwardIn * Pose2d.METERS_PER_INCH,
+                FieldConstants.TurretPivotLeftIn * Pose2d.METERS_PER_INCH);
+        Translation2d cell = FieldConstants.cell(redAlliance, upCell == UpCell.AUDIENCE);
+        return pivot.getDistance(cell) / Pose2d.METERS_PER_INCH;
+    }
+
+    /** RPM from the table at the current distance, or NaN if the table is off, has a typo, or there's no distance. */
+    private double tableRPM() {
+        if (!SubsystemConstants.ShooterUseTable) return Double.NaN;
+        return InterpolationTable.interpolate(
+                SubsystemConstants.ShooterTableDistIn, SubsystemConstants.ShooterTableRPM, shotDistanceIn());
+    }
+
+    /** What the shooter spins at while L2 is held: table + trim, or the D-pad RPM when the table can't be used. */
+    private double shooterRPM() {
+        double table = tableRPM();
+        return Double.isNaN(table) ? selectedRPM : table + tableTrimRPM;
+    }
+
+    /** For telemetry: where the RPM comes from right now. */
+    private String rpmSource() {
+        if (!SubsystemConstants.ShooterUseTable) return "D-PAD";
+        if (!InterpolationTable.isValid(SubsystemConstants.ShooterTableDistIn, SubsystemConstants.ShooterTableRPM)) {
+            return "D-PAD (table has a typo: distances must go up, same count as RPMs)";
+        }
+        if (Double.isNaN(shotDistanceIn())) return "D-PAD (table on, but no distance: need pose + CELL)";
+        return String.format("TABLE %.0f  (trim %+.0f)", tableRPM(), tableTrimRPM);
     }
 }

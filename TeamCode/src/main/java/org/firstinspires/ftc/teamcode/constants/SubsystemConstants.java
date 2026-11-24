@@ -31,8 +31,8 @@ public class SubsystemConstants {
     // servo position = 0.5 + (feedback angle - center) / TurretServoRangeDeg, the difference wrapped to -180..180
     // Center = the feedback angle when that servo sits at position 0.5. 180 is a guess until calibrated
     // (X / B in TurretServoReadOpMode)
-    public static double TurretLeftFeedbackCenterDeg = 179;    // left servo feedback angle at position 0.5
-    public static double TurretRightFeedbackCenterDeg = 179;   // right servo feedback angle at position 0.5
+    public static double TurretLeftFeedbackCenterDeg = 178;    // left servo feedback angle at position 0.5
+    public static double TurretRightFeedbackCenterDeg = 178;   // right servo feedback angle at position 0.5
     public static boolean TurretLeftFeedbackReversed = true;  // flip if the reading goes down when the servo turns toward position 1
     public static boolean TurretRightFeedbackReversed = true;
     // Hand-set zero: before INIT, point the turret straight forward by hand; TurretSubsystem reads both
@@ -51,9 +51,18 @@ public class SubsystemConstants {
     public static double defaultRPM = 3000;
     public static double ShooterIdleRPM = 200;
     public static double RPMTolerance = 80;
+    public static double ShooterRPMFilter = 0.3;     // 0..1 smoothing of the measured RPM: lower = smoother but slower, 1 = off
+    public static double ShooterMismatchRPM = 150;   // left and right encoders differ by more than this = one is wrong
     public static double RPMStep = 100;     // change per d-pad press in TeleOp
     public static double MinRPM = 1000;     // lowest speed the d-pad can select
     public static boolean FeedOnlyAtSpeed = false;  // true = indexer waits until the shooter is at speed
+
+    // Shooter interpolation table: shooter RPM from the turret-pivot-to-CELL floor distance
+    // (TeleOp telemetry "Shot distance"). Distances smallest first, one RPM for each distance.
+    // PLACEHOLDERS: every RPM is defaultRPM until measured, so turning the table on early changes nothing
+    public static boolean ShooterUseTable = false;  // false = D-pad picks the RPM (use this while measuring)
+    public static double[] ShooterTableDistIn = {24, 36, 48, 60, 72, 84};
+    public static double[] ShooterTableRPM    = {3000, 3000, 3000, 3000, 3000, 3000};
 
     // Blocker servo ("blocker", Axon, 500-2500 us): holds the ball back until it's time to shoot.
     // 0.5 -> 1.0 is half the servo's travel (about 175 deg): tune both in Dashboard
@@ -70,14 +79,14 @@ public class SubsystemConstants {
     // Starting values from the REV/FIRST PIDF guide: F = 32767 / max ticks per second, P = 0.1 * F, I = 0.1 * P, D = 0
     // Max speed from ShooterKV: 1 / 0.0001925 = 5195 RPM = 2424 ticks/s, so F = 32767 / 2424 = 13.5
     // Better: measure max ticks/s on a full battery (RUN_WITHOUT_ENCODER, power 1, highest getVelocity) and redo F
-    public static double RightShooterVelP = 1.45;
+    public static double RightShooterVelP = 1.5;
     public static double RightShooterVelI = 0.10;
     public static double RightShooterVelD = 0.0;
-    public static double RightShooterVelF = 14.55;
-    public static double LeftShooterVelP = 1.45;
+    public static double RightShooterVelF = 15.5;
+    public static double LeftShooterVelP = 1.5;
     public static double LeftShooterVelI = 0.10;
     public static double LeftShooterVelD = 0.0;
-    public static double LeftShooterVelF = 14.55;
+    public static double LeftShooterVelF = 15.5;
 
     // Shooter PID: what ShooterSubsystem runs on (RUN_WITHOUT_ENCODER). Live-tunable in Dashboard.
     // power = ShooterKV * targetRPM + PID(targetRPM - measuredRPM), clipped to [0, 1], same power to both motors

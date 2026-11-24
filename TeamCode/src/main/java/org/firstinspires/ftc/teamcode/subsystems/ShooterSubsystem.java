@@ -10,18 +10,18 @@ import com.qualcomm.robotcore.hardware.ServoImplEx;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.util.Range;
 
+import java.util.Arrays;
+
 import dev.nextftc.core.commands.Command;
 import dev.nextftc.core.commands.utility.NullCommand;
 import dev.nextftc.core.subsystems.Subsystem;
 
 import org.firstinspires.ftc.teamcode.constants.SubsystemConstants;
-import org.firstinspires.ftc.teamcode.util.PIDController;
 
 /*
- * Shooter on our own speed control (RUN_WITHOUT_ENCODER): every loop,
- *   power = ShooterKV * targetRPM + PID(targetRPM - measured RPM), clipped to 0..1,
- * and the SAME power goes to both motors, so two motors on one flywheel never fight.
- * "Without encoder" only means the hub doesn't run its own speed loop: the encoders are still read.
+ * Shooter on the hubs' own speed control (RUN_USING_ENCODER + setVelocity): both motors get the same
+ * target speed, and each motor's hub holds it with that motor's own encoder and its own velocity PIDF
+ * (Left/RightShooterVelP, I, D, F in SubsystemConstants).
  */
 public class ShooterSubsystem implements Subsystem {
 
@@ -32,10 +32,17 @@ public class ShooterSubsystem implements Subsystem {
     private boolean isInitialized = false;
 
     private double targetRPM = 0.0;            // what commands ask for (both motors)
-    private double lastTarget = Double.NaN;    // the target the PID was last set up for
-    private double power = 0.0;                // what was last sent to both motors
-    private final PIDController pid = new PIDController(
-            SubsystemConstants.ShooterKP, SubsystemConstants.ShooterKI, SubsystemConstants.ShooterKD);
+    private double lastTarget = Double.NaN;    // what was last sent to the motors
+
+    // Hub velocity PIDF last sent to each motor, as {P, I, D, F} (NaN = not sent yet),
+    // so new values go to a hub only when they change
+    private final double[] sentLeft = new double[4];
+    private final double[] sentRight = new double[4];
+
+    // Measured speed: both encoders read once per loop in periodic() and smoothed (ShooterRPMFilter)
+    private double leftRPM = Double.NaN;       // NaN = no reading yet
+    private double rightRPM = Double.NaN;
+    private boolean encoderMismatch = false;   // left and right differ by more than ShooterMismatchRPM
 
     // Blocker: nothing is sent until a command asks, so it doesn't move during INIT.
     // The open / closed positions are in SubsystemConstants (Dashboard)
@@ -68,15 +75,16 @@ public class ShooterSubsystem implements Subsystem {
 
         blocker.setPwmRange(AxonPWMRange);
 
-        // setPower is raw power: our PID below does the speed control, not the hub
-        motorLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        motorRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        // Power 0 coasts the flywheel down instead of braking it
+        // setVelocity uses the hub's own velocity PID, so EACH motor needs its own encoder cable
+        // (a motor without one reads 0 speed and gets pushed to full power)
+        motorLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        motorRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        // Stopping disables the motors (see periodic), which always coasts
         motorLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         motorRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
 
         // Set so both getVelocity() readings are positive when the flywheel spins the shooting way
-        motorLeft.setDirection(DcMotorSimple.Direction.REVERSE);
+        motorLeft.setDirection(DcMotorSimple.Direction.FORWARD);
         motorRight.setDirection(DcMotorSimple.Direction.REVERSE);
         blocker.setDirection(Servo.Direction.FORWARD);
 
@@ -89,11 +97,17 @@ public class ShooterSubsystem implements Subsystem {
 
         targetRPM = 0.0;
         lastTarget = Double.NaN;
-        power = 0.0;
-        pid.reset();
+        leftRPM = Double.NaN;
+        rightRPM = Double.NaN;
+        encoderMismatch = false;
         blockerCommanded = false;
         blockerOpen = false;
         lastBlockerPos = Double.NaN;
+
+        // Always send the PIDF at init: don't rely on values left over from an earlier OpMode
+        Arrays.fill(sentLeft, Double.NaN);
+        Arrays.fill(sentRight, Double.NaN);
+        applyVelocityPIDF();
 
         isInitialized = true;
     }
@@ -102,42 +116,50 @@ public class ShooterSubsystem implements Subsystem {
     public void periodic() {
         if (!isInitialized) return;
 
+        applyVelocityPIDF();   // picks up Dashboard changes while tuning
+
+        // Every loop, even while stopped, so the reading follows the flywheel as it coasts down
+        updateMeasuredRPM();
+
         // Blocker before the flywheel: the flywheel code below returns early while the shooter is stopped
         updateBlocker();
-
-        // Picks up Dashboard changes while tuning
-        pid.setP(SubsystemConstants.ShooterKP);
-        pid.setI(SubsystemConstants.ShooterKI);
-        pid.setD(SubsystemConstants.ShooterKD);
 
         //stop setting for the motors
         if (targetRPM == 0){
             if (lastTarget != 0){
-                setBothPower(0.0);   // FLOAT: coasts down
-                pid.reset();
+                // Not setPower(0): in RUN_USING_ENCODER that becomes a speed target of 0, so the hub
+                // brakes the flywheel instead of letting it coast. The SDK also skips a setPower(0)
+                // if the last setPower (up to 0.5 s ago) was also 0, even after a setVelocity in
+                // between, so a quick tap of the button could leave the shooter running.
+                // Disabling turns the motor's output off (coast); setVelocity turns it back on.
+                motorLeft.setMotorDisable();
+                motorRight.setMotorDisable();
                 lastTarget = 0;
             }
             return;
         }
 
-        // New target: start the PID fresh (no leftover I sum or D jump from the old target)
+        //set both motors with their hub's velocity PID (setVelocity takes ticks per second, not RPM)
         if (targetRPM != lastTarget) {
-            pid.reset();
-            pid.setSetpoint(targetRPM);
+            double tps = rpmToTps(targetRPM);
+            motorLeft.setVelocity(tps);
+            motorRight.setVelocity(tps);
             lastTarget = targetRPM;
         }
-
-        double feedforward = SubsystemConstants.ShooterKV * targetRPM;   // about the power this speed needs
-        double feedback = pid.calculate(getRPM());                        // corrects what the feedforward misses
-        setBothPower(Range.clip(feedforward + feedback, 0.0, 1.0));       // never backward
     }
 
-    /** Same power to both motors, sent only when it changes. */
-    private void setBothPower(double newPower) {
-        if (newPower == power) return;
-        motorLeft.setPower(newPower);
-        motorRight.setPower(newPower);
-        power = newPower;
+    /**
+     * Reads both encoders once and smooths each one with a low-pass filter:
+     *   smoothed = smoothed + ShooterRPMFilter * (new reading - smoothed),
+     * so one jittery sample doesn't flip atSpeed(). Then compares the two: on one flywheel they should match.
+     */
+    private void updateMeasuredRPM() {
+        double rawLeft = tpsToRpm(motorLeft.getVelocity());
+        double rawRight = tpsToRpm(motorRight.getVelocity());
+        double a = Range.clip(SubsystemConstants.ShooterRPMFilter, 0.01, 1.0);   // 0 would freeze the reading
+        leftRPM = Double.isNaN(leftRPM) ? rawLeft : leftRPM + a * (rawLeft - leftRPM);
+        rightRPM = Double.isNaN(rightRPM) ? rawRight : rightRPM + a * (rawRight - rightRPM);
+        encoderMismatch = Math.abs(leftRPM - rightRPM) > SubsystemConstants.ShooterMismatchRPM;
     }
 
     /**
@@ -151,6 +173,32 @@ public class ShooterSubsystem implements Subsystem {
             blocker.setPosition(pos);
             lastBlockerPos = pos;
         }
+    }
+
+    /**
+     * Sends each motor its own velocity PIDF from SubsystemConstants, only if a value changed since
+     * the last send (each send is a hub command, so not every loop). Old hub firmware throws
+     * "setting of pidf coefficients not supported": update the hub firmware if you see that.
+     */
+    private void applyVelocityPIDF() {
+        sendPIDFIfChanged(motorLeft, sentLeft,
+                SubsystemConstants.LeftShooterVelP, SubsystemConstants.LeftShooterVelI,
+                SubsystemConstants.LeftShooterVelD, SubsystemConstants.LeftShooterVelF);
+        sendPIDFIfChanged(motorRight, sentRight,
+                SubsystemConstants.RightShooterVelP, SubsystemConstants.RightShooterVelI,
+                SubsystemConstants.RightShooterVelD, SubsystemConstants.RightShooterVelF);
+    }
+
+    /** sent = what this motor got last time, {P, I, D, F}. Skips the hub command if nothing changed. */
+    private static void sendPIDFIfChanged(DcMotorEx motor, double[] sent,
+                                          double p, double i, double d, double f) {
+        if (p == sent[0] && i == sent[1] && d == sent[2] && f == sent[3]) return;
+
+        motor.setVelocityPIDFCoefficients(p, i, d, f);
+        sent[0] = p;
+        sent[1] = i;
+        sent[2] = d;
+        sent[3] = f;
     }
 
     // ----- Abilities that commands can use (all in RPM) -----
@@ -183,37 +231,42 @@ public class ShooterSubsystem implements Subsystem {
     }
 
     /**
-     * Flywheel speed the PID uses: the average of the encoders that are turned on in SubsystemConstants
-     * (ShooterLeftEncoder / ShooterRightEncoder). Turn off one that isn't plugged in, or it reads 0
-     * and drags the average down, so the PID pushes full power.
+     * Flywheel speed: the average of both smoothed encoders. If they disagree (hasEncoderMismatch) while
+     * running, the one closer to the target, since the other is probably unplugged or reversed.
      */
     public double getRPM() {
-        boolean left = SubsystemConstants.ShooterLeftEncoder;
-        boolean right = SubsystemConstants.ShooterRightEncoder;
-        if (left && right) return (getLeftRPM() + getRightRPM()) / 2.0;
-        if (left) return getLeftRPM();
-        if (right) return getRightRPM();
-        return 0.0;   // no encoder: atSpeed() can never be true
+        double left = getLeftRPM();
+        double right = getRightRPM();
+        if (encoderMismatch && targetRPM > 0) {
+            return Math.abs(left - targetRPM) < Math.abs(right - targetRPM) ? left : right;
+        }
+        return (left + right) / 2.0;
     }
 
+    /** Left motor speed, smoothed. 0 before the first loop. */
     public double getLeftRPM() {
-        if (!isInitialized) return 0.0;
-        return tpsToRpm(motorLeft.getVelocity());
+        return Double.isNaN(leftRPM) ? 0.0 : leftRPM;
     }
 
+    /** Right motor speed, smoothed. 0 before the first loop. */
     public double getRightRPM() {
-        if (!isInitialized) return 0.0;
-        return tpsToRpm(motorRight.getVelocity());
+        return Double.isNaN(rightRPM) ? 0.0 : rightRPM;
     }
 
-    /** The power both motors get right now (0..1), for tuning ShooterKV. */
-    public double getPower() {
-        return power;
+    /** True when the two encoders differ by more than ShooterMismatchRPM: check cables, directions, belt. */
+    public boolean hasEncoderMismatch() {
+        return encoderMismatch;
     }
 
+    /**
+     * Both motors within the tolerance and the encoders agree, so one slow (or unplugged) motor
+     * can't hide behind the average. Uses the smoothed readings.
+     */
     public boolean atSpeed() {
         return targetRPM > 0
-                && Math.abs(getRPM() - targetRPM) < SubsystemConstants.RPMTolerance;
+                && !encoderMismatch
+                && Math.abs(getLeftRPM() - targetRPM) < SubsystemConstants.RPMTolerance
+                && Math.abs(getRightRPM() - targetRPM) < SubsystemConstants.RPMTolerance;
     }
 
     // ----- Tuning telemetry -----
@@ -226,6 +279,10 @@ public class ShooterSubsystem implements Subsystem {
     // ----- Unit conversion: TPS is only used inside this class -----
     // Uses the real motor's ticks per revolution from SubsystemConstants, NOT the
     // configured motor type (motor.getMotorType()), which assumes a 20:1 gearbox
+
+    private double rpmToTps(double rpm) {
+        return rpm * SubsystemConstants.ShooterTicksPerRev / 60.0;
+    }
 
     private double tpsToRpm(double tps) {
         return tps * 60.0 / SubsystemConstants.ShooterTicksPerRev;

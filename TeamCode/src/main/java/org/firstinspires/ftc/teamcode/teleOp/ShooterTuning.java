@@ -49,7 +49,7 @@ public class ShooterTuning extends NextFTCOpMode {
         shooter.setDefaultCommand(new ShooterFollowRPM(shooter,
                 () -> shootHeld() ? selectedRPM : 0.0));
         intake.setDefaultCommand(new IntakeFollowPower(intake,
-                () -> intakeHeld() ? SubsystemConstants.IntakePower : 0.0));
+                () -> intakePower() ));
 
         Gamepads.gamepad1().dpadUp().whenBecomesTrue(() -> changeRPM(+SubsystemConstants.RPMStep));
         Gamepads.gamepad1().dpadDown().whenBecomesTrue(() -> changeRPM(-SubsystemConstants.RPMStep));
@@ -61,7 +61,9 @@ public class ShooterTuning extends NextFTCOpMode {
         telemetry.addData("State", shootHeld() ? "SHOOTING" : "IDLE");
         telemetry.addData("Selected RPM", "%.0f  (max %.0f)", selectedRPM, shooter.getMaxRPM());
         telemetry.addData("Target RPM", "%.0f", shooter.getTargetRPM());
-        telemetry.addData("Actual RPM", "%.0f", shooter.getLeftRPM());
+        telemetry.addData(" RPM", "%.0f", shooter.getLeftRPM());
+
+        telemetry.addData("Encoders", shooter.hasEncoderMismatch() ? "MISMATCH: check cables / directions" : "OK");
         telemetry.addData("Battery (V)", "%.2f", shooter.getBatteryVoltage());
         telemetry.addData("At speed", shooter.atSpeed());
 
@@ -71,7 +73,11 @@ public class ShooterTuning extends NextFTCOpMode {
         return gamepad1.right_bumper;
     }
 
-    private boolean intakeHeld() {
+    private double intakePower() {
+        if (intakeHeld()) return 0.4;
+        return 0.0;
+    }
+    private boolean intakeHeld(){
         return gamepad1.right_trigger > TRIGGER_THRESHOLD;
     }
 
