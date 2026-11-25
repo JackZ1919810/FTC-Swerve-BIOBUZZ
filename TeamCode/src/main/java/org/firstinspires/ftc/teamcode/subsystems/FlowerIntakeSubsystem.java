@@ -46,7 +46,7 @@ public class FlowerIntakeSubsystem implements Subsystem {
 
         flower.setPwmRange(AxonPWMRange);
 
-        flower.setDirection(Servo.Direction.FORWARD);
+        flower.setDirection(Servo.Direction.REVERSE);
 
         flowerCommanded = false;
         flowerOpen = false;

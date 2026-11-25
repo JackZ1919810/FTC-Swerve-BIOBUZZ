@@ -8,11 +8,7 @@ public class SubsystemConstants {
     //Intake constants
     public static double IntakePower = 1.0;
     public static double OuttakePower = -0.6;
-    public static double SlowIntakePower = 0.4;   // A in TeleOp: gentler pickup
-
-    //Indexer constants
-    public static double IndexPower = 1.0;
-    public static double ReIndexPower = -0.6;
+    public static double SlowIntakePower = 0.3;
 
     //Turret constants
     public static final PwmControl.PwmRange AxonPWMRange =
@@ -66,27 +62,27 @@ public class SubsystemConstants {
 
     // Blocker servo ("blocker", Axon, 500-2500 us): holds the ball back until it's time to shoot.
     // 0.5 -> 1.0 is half the servo's travel (about 175 deg): tune both in Dashboard
-    public static double BlockerOpenPos = 1.0;      // the ball can pass
-    public static double BlockerClosedPos = 0.5;    // the ball is held back
+    public static double BlockerOpenPos = 0.95;      // the ball can pass
+    public static double BlockerClosedPos = 0.6;    // the ball is held back
 
     // Flower intake servo ("flower", Axon, 500-2500 us): opens on a command and stays open until the next one.
     // Placeholders: 0.5 -> 1.0 is about 175 deg of travel, tune both in Dashboard
-    public static double FlowerOpenPos = 1.0;
-    public static double FlowerClosedPos = 0.5;
+    public static double FlowerOpenPos = 0.8;
+    public static double FlowerClosedPos = 0.4;
 
     // Shooter velocity PIDF: NOT used right now. ShooterSubsystem runs on our own PID below (RUN_WITHOUT_ENCODER).
     // Kept for switching back to setVelocity (the hub's own velocity loop; units are the hub's, not ours).
     // Starting values from the REV/FIRST PIDF guide: F = 32767 / max ticks per second, P = 0.1 * F, I = 0.1 * P, D = 0
     // Max speed from ShooterKV: 1 / 0.0001925 = 5195 RPM = 2424 ticks/s, so F = 32767 / 2424 = 13.5
     // Better: measure max ticks/s on a full battery (RUN_WITHOUT_ENCODER, power 1, highest getVelocity) and redo F
-    public static double RightShooterVelP = 1.5;
+    public static double RightShooterVelP = 2.0;
     public static double RightShooterVelI = 0.10;
     public static double RightShooterVelD = 0.0;
-    public static double RightShooterVelF = 15.5;
-    public static double LeftShooterVelP = 1.5;
+    public static double RightShooterVelF = 15.2;
+    public static double LeftShooterVelP = 2.0;
     public static double LeftShooterVelI = 0.10;
     public static double LeftShooterVelD = 0.0;
-    public static double LeftShooterVelF = 15.5;
+    public static double LeftShooterVelF = 15.2;
 
     // Shooter PID: what ShooterSubsystem runs on (RUN_WITHOUT_ENCODER). Live-tunable in Dashboard.
     // power = ShooterKV * targetRPM + PID(targetRPM - measuredRPM), clipped to [0, 1], same power to both motors

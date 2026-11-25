@@ -43,10 +43,12 @@ import org.firstinspires.ftc.teamcode.util.UpCell;
  *   Share [BACK]              toggle field centric
  *
  * Gamepad 2, operator:
- *   L2 (hold)                 shooter
+ *   L2 (hold)                 shooter. Gamepad 2 rumbles once when it first reaches speed
+ *                             (again only after L2 is released and pressed again)
  *   L1 (hold)                 outtake: intake backward (wins over the other intake buttons)
  *   R2 (hold)                 full-speed intake
- *   R1 (hold)                 shooter feed: slow-speed intake + blocker open
+ *   R1 (hold)                 shooter feed: slow-speed intake
+ *   Triangle [Y] (hold)       blocker open (the driver decides when, no at-speed lock)
  *   Square [X]                turret: center & disable / press again to aim
  *   D-pad left / right        our upward CELL is on my left / right (pick it in INIT, again after every TIP)
  *   D-pad up / down           shooter RPM +/- one step (table on: a trim added to the table's RPM)
@@ -60,6 +62,8 @@ import org.firstinspires.ftc.teamcode.util.UpCell;
 public class TeleOp extends NextFTCOpMode {
     // How far a trigger must be pressed (0..1) to count as "held"
     private static final double TRIGGER_THRESHOLD = 0.5;
+    // How long gamepad 2 rumbles when the shooter first reaches speed
+    private static final int READY_RUMBLE_MS = 400;
 
     private SwerveDrivetrain drivetrain;
     private IntakeSubsystem intake;
@@ -75,6 +79,7 @@ public class TeleOp extends NextFTCOpMode {
     private boolean fieldCentric = true;
     private double selectedRPM = SubsystemConstants.defaultRPM;   // changed with the d-pad (table off)
     private double tableTrimRPM = 0.0;                            // changed with the d-pad (table on)
+    private boolean readyRumbleArmed = true;   // true = the next time the shooter reaches speed, rumble
 
     @Override
     public void onInit() {
@@ -153,9 +158,9 @@ public class TeleOp extends NextFTCOpMode {
                 () -> shootHeld() ? shooterRPM() : 0.0));
 
         // Blocker: runs next to ShooterFollowRPM (it doesn't require the shooter, so it's scheduled
-        // instead of being a default command). Open while the shooter feed (R1) is held, the same
-        // button that runs the slow intake. Later, open only at speed: () -> feedHeld() && shooter.atSpeed()
-        new ShooterBlockerFollow(shooter, () -> feedHeld()).schedule();
+        // instead of being a default command). Open while Triangle is held: the driver decides when,
+        // helped by the ready rumble (see updateReadyRumble)
+        new ShooterBlockerFollow(shooter, () -> gateHeld()).schedule();
 
         aimCommand = new TurretAimAtGoal(turret, drivetrain, () -> aimOn, () -> redAlliance,
                 () -> upCell);
@@ -181,6 +186,8 @@ public class TeleOp extends NextFTCOpMode {
 
     @Override
     public void onUpdate() {
+        updateReadyRumble();
+
         Pose2d pose = drivetrain.getPose();
         telemetry.addData("X", "%.2f in", pose.getXInches());
         telemetry.addData("Y", "%.2f in", pose.getYInches());
@@ -246,6 +253,26 @@ public class TeleOp extends NextFTCOpMode {
 
     private boolean shootHeld() {
         return gamepad2.left_trigger > TRIGGER_THRESHOLD;
+    }
+
+    private boolean gateHeld(){
+        return gamepad2.y;
+    }
+
+    /**
+     * Rumbles gamepad 2 once per spin-up: the first time the shooter reaches its target RPM after starting.
+     * Not again when the speed dips after a ball and comes back; only after the shooter stops (L2 released)
+     * and spins up again. Works on controllers with rumble motors (PS4 / PS5), not on the Logitech F310.
+     */
+    private void updateReadyRumble() {
+        if (shooter.getTargetRPM() == 0) {   // shooter stopped: the next spin-up may rumble again
+            readyRumbleArmed = true;
+            return;
+        }
+        if (readyRumbleArmed && shooter.atSpeed()) {
+            gamepad2.rumble(1.0, 1.0, READY_RUMBLE_MS);   // both rumble motors, full strength
+            readyRumbleArmed = false;
+        }
     }
 
     /** D-pad up / down: with the table on it trims the table's RPM, otherwise it picks the RPM. */
