@@ -78,10 +78,11 @@ public class DrivetrainConstants {
     // (max speed m/s, lookahead m, max accel m/s^2, turn accel m/s^2)
     public static PathConstraints PATH_FAST = new PathConstraints(1.5, 0.40, 1.5, 5.0);  // from the simulation: tune on the robot
     public static PathConstraints PATH_SLOW = new PathConstraints(0.5, 0.25, 1.0, 2.0);
+
     public static final DrivetrainPIDConstants autoPIDConstants = new DrivetrainPIDConstants(
             new PIDCoefficients(6.5, 0.0, 0.3), //this P value make the wheel adjusting a bit, a higher P value would decrease that.
-            new PIDCoefficients(7.0, 0.0, 0.2),
-            new Tolerances(0.02, 0.01), //lower the tolerance once the robot is tuned to accurate
+            new PIDCoefficients(7.0, 0.0, 0.2), //this is the rotation coefficient
+            new Tolerances(0.03, 0.01), //lower the tolerance once the robot is tuned to accurate
             new Tolerances(Math.toRadians(3.0), 0.01)
     );
 

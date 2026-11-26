@@ -32,10 +32,10 @@ public class FieldConstants {
     // The heading must match how the robot really sits: TeleOp's field-centric drive and the turret aim use it
     public static double RedStartXIn = 65.75;
     public static double RedStartYIn = -12.5;
-    public static double RedStartHeadingDeg = 180;     // front facing the rear wall (-X)
+    public static double RedStartHeadingDeg = -90;     // front facing the rear wall (-X)
     public static double BlueStartXIn = -65.75;        // blue = red turned 180 deg about the field center
-    public static double BlueStartYIn = 13;
-    public static double BlueStartHeadingDeg = 0;      // front facing the audience (+X)
+    public static double BlueStartYIn = 12.5;
+    public static double BlueStartHeadingDeg = 90;      // front facing the audience (+X)
 
     // OTOS sensor measured from the robot center: forward and left are positive. MEASURE
     public static double OtosForwardIn = 0;

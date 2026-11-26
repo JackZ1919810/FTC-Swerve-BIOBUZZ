@@ -2,8 +2,21 @@ package org.firstinspires.ftc.teamcode.autonomous;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
+import org.firstinspires.ftc.teamcode.commands.FlowerSetOpen;
+import org.firstinspires.ftc.teamcode.commands.FollowPath;
+import org.firstinspires.ftc.teamcode.commands.IntakeFollowPower;
+import org.firstinspires.ftc.teamcode.commands.IntakeSetPower;
 import org.firstinspires.ftc.teamcode.commands.PIDToPosition;
+import org.firstinspires.ftc.teamcode.commands.PeriodicIntake;
+import org.firstinspires.ftc.teamcode.commands.ShooterBlockerFollow;
+import org.firstinspires.ftc.teamcode.commands.ShooterSetRPM;
+import org.firstinspires.ftc.teamcode.commands.TurretSetPosition;
+import org.firstinspires.ftc.teamcode.constants.DrivetrainConstants;
 import org.firstinspires.ftc.teamcode.constants.FieldConstants;
+import org.firstinspires.ftc.teamcode.constants.SubsystemConstants;
+import org.firstinspires.ftc.teamcode.subsystems.FlowerIntakeSubsystem;
+import org.firstinspires.ftc.teamcode.subsystems.IntakeSubsystem;
+import org.firstinspires.ftc.teamcode.subsystems.ShooterSubsystem;
 import org.firstinspires.ftc.teamcode.subsystems.TurretSubsystem;
 import org.firstinspires.ftc.teamcode.swerve.SwerveDrivetrain;
 import org.firstinspires.ftc.teamcode.util.FieldMath;
@@ -11,7 +24,9 @@ import org.firstinspires.ftc.teamcode.util.Pose2d;
 import org.firstinspires.ftc.teamcode.util.PoseStorage;
 import org.firstinspires.ftc.teamcode.util.Rotation2d;
 
-import dev.nextftc.core.commands.delays.Delay;
+import dev.nextftc.core.commands.Command;
+import dev.nextftc.core.commands.delays.WaitUntil;
+import dev.nextftc.core.commands.groups.ParallelGroup;
 import dev.nextftc.core.commands.groups.SequentialGroup;
 import dev.nextftc.core.components.SubsystemComponent;
 import dev.nextftc.ftc.NextFTCOpMode;
@@ -22,6 +37,9 @@ public class RedAutoShootFirstV1 extends NextFTCOpMode {
 
     private SwerveDrivetrain drive;
     private TurretSubsystem turret;
+    private IntakeSubsystem intake;
+    private ShooterSubsystem shooter;
+    private FlowerIntakeSubsystem flower;
     private Pose2d start;
 
     @Override
@@ -35,7 +53,15 @@ public class RedAutoShootFirstV1 extends NextFTCOpMode {
         turret = new TurretSubsystem(hardwareMap);
         turret.initialize();
 
-        addComponents(new SubsystemComponent(drive, turret), BulkReadComponent.INSTANCE);
+        // Nothing moves during INIT: the intake and shooter sit at 0, the blocker and flower get no signal
+        intake = new IntakeSubsystem(hardwareMap);
+        intake.initialize();
+        shooter = new ShooterSubsystem(hardwareMap);
+        shooter.initialize();
+        flower = new FlowerIntakeSubsystem(hardwareMap);
+        flower.initialize();
+
+        addComponents(new SubsystemComponent(drive, turret, intake, shooter, flower), BulkReadComponent.INSTANCE);
     }
 
     @Override
@@ -51,7 +77,84 @@ public class RedAutoShootFirstV1 extends NextFTCOpMode {
     public void onStartButtonPressed(){
         turret.center();   // first turret command: freezes the hand-set zero and holds the turret forward
 
+        // Known state from START, same as TeleOp: blocker closed (balls can't reach the flywheel), flower closed
+        shooter.setServoPos(false);
+        flower.setOpen(false);
+
         new SequentialGroup(
+
+            turretSetPos(-90),
+            shoot(2.0),
+
+            //turn on the intake at the start of this
+            new IntakeSetPower(intake, SubsystemConstants.IntakePower),
+            new FollowPath(drive, DrivetrainConstants.PATH_FAST,
+                    Pose2d.fromInches(65.75,-64.75, Rotation2d.fromDegrees(-90))
+            ),
+
+            //turn off intake after 0.5 second this ended
+            // (the next path starts right away; the intake stops 0.5 s into it)
+            new ParallelGroup(
+                    new IntakeSetPower(intake, 0.0).afterTime(0.5),
+                    new FollowPath(drive, DrivetrainConstants.PATH_FAST,
+                            Pose2d.fromInches(24, -48, Rotation2d.fromDegrees(180)),
+                            Pose2d.fromInches(-24, -48, Rotation2d.fromDegrees(180)),
+                            Pose2d.fromInches(-53.5, -24.5, Rotation2d.fromDegrees(180))
+                    )
+            ),
+
+            //flower intake down
+            new FlowerSetOpen(flower, true),
+
+            turretSetPos(-90),
+
+            new FollowPath(drive, DrivetrainConstants.PATH_SLOW,
+                    Pose2d.fromInches(-58.5, -24.5, Rotation2d.fromDegrees(180))
+            ).endAfter(1),
+
+            //shooter on, shoot for 2s, off shooter
+            shoot(2.0),
+            //intake on for 1s
+            intakeFor(1.0),
+            //shooter on and shoot for 2s, shooter off
+            shoot(2.0),
+
+            new PIDToPosition(drive,
+                    Pose2d.fromInches(-53.5,-24.5, Rotation2d.fromDegrees(180))
+            ).endAfter(1),
+
+
+            new FollowPath(drive, DrivetrainConstants.PATH_FAST,
+                        Pose2d.fromInches(-24, -48, Rotation2d.fromDegrees(-90)),
+                        Pose2d.fromInches(24, -48, Rotation2d.fromDegrees(-90)),
+                        Pose2d.fromInches(24, -53.5, Rotation2d.fromDegrees(-90))
+            ),
+
+            new FollowPath(drive, DrivetrainConstants.PATH_SLOW,
+                    Pose2d.fromInches(24, -58.5, Rotation2d.fromDegrees(-90))
+            ).endAfter(1),
+
+            //intake for 1s
+            intakeFor(1.0),
+
+            new PIDToPosition(drive,
+                    Pose2d.fromInches(24, -53.5, Rotation2d.fromDegrees(-90))
+            ).endAfter(1),
+
+            //flower intake up while driving
+            new FlowerSetOpen(flower, false),   // finishes at once, so it closes as the drive starts
+
+            new FollowPath(drive, DrivetrainConstants.PATH_FAST,
+                    Pose2d.fromInches(-24, -48, Rotation2d.fromDegrees(180)),
+                    Pose2d.fromInches(-58.5, -24.5, Rotation2d.fromDegrees(180))
+            ),
+
+            //shooter on, shoot for 2s, shooter off
+            shoot(2.0),
+
+            new FollowPath(drive, DrivetrainConstants.PATH_FAST,
+                    Pose2d.fromInches(-44, -60, Rotation2d.fromDegrees(180))
+            )
 
         ).schedule();
 
@@ -60,6 +163,36 @@ public class RedAutoShootFirstV1 extends NextFTCOpMode {
     @Override
     public void onStop() {
         PoseStorage.save(drive.getPose(), true);   // TeleOp continues from here
+    }
+
+    // ----- Actions used in the sequence above -----
+
+    /**
+     * Shooter on, shoot for `seconds`, shooter off. Waits for the flywheel to reach speed first
+     * (at most AutoSpinUpTimeout, then feeds anyway). Feeding is what TeleOp's R1 + Triangle do:
+     * blocker open and the intake at the slow feed power, scaled by battery voltage.
+     */
+    private Command shoot(double seconds) {
+        return new SequentialGroup(
+                new ShooterSetRPM(shooter, SubsystemConstants.AutoShootRPM),
+                new WaitUntil(() -> shooter.atSpeed()).endAfter(SubsystemConstants.AutoSpinUpTimeout),
+                new ParallelGroup(
+                        new ShooterBlockerFollow(shooter, () -> true),   // closes the blocker when it ends
+                        new IntakeFollowPower(intake,
+                                () -> SubsystemConstants.SlowIntakePower * shooter.getVoltageScale())   // stops the intake when it ends
+                ).endAfter(seconds),
+                new ShooterSetRPM(shooter, 0.0)
+        );
+    }
+
+    /** Intake at full power for `seconds`, then off. */
+    private Command intakeFor(double seconds) {
+        return new PeriodicIntake(intake, SubsystemConstants.IntakePower).endAfter(seconds);
+    }
+
+    /** Turret to `deg` (degrees from the robot's front, closest reachable way), finishes immediately. */
+    private Command turretSetPos(double deg){
+        return new TurretSetPosition(turret, deg);
     }
 
     /** A target written the old way (inches from the start: x forward, y left), in field coordinates. */

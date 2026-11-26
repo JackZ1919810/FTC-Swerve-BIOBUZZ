@@ -133,6 +133,31 @@ public class SwerveDrivetrain implements Subsystem {
         lastDesiredStates = states;
     }
 
+    /**
+     * X-lock: every wheel points at the robot center (an X seen from above), drive speed 0.
+     * A push from any direction makes at least two wheels scrub sideways, and turning makes all four scrub,
+     * so the robot is hard to move. Call it every loop while the lock is wanted; drive() again to leave it.
+     */
+    public void lock() {
+        SwerveModuleState[] states = new SwerveModuleState[] {
+                new SwerveModuleState(0.0, Rotation2d.fromDegrees(45)),    // left front
+                new SwerveModuleState(0.0, Rotation2d.fromDegrees(-45)),   // right front
+                new SwerveModuleState(0.0, Rotation2d.fromDegrees(-45)),   // left rear
+                new SwerveModuleState(0.0, Rotation2d.fromDegrees(45))     // right rear
+        };
+
+        leftFront.setDesiredState(states[0]);
+        rightFront.setDesiredState(states[1]);
+        leftRear.setDesiredState(states[2]);
+        rightRear.setDesiredState(states[3]);
+
+        // With the sticks idle, the kinematics keeps the last headings it gave. Make those the X,
+        // so letting go of the lock with the sticks idle leaves the wheels in the X until the driver moves
+        kinematics.resetHeadings(states[0].angle, states[1].angle, states[2].angle, states[3].angle);
+
+        lastDesiredStates = states;
+    }
+
     public void driveFieldCentric(ChassisSpeeds fieldSpeeds) {
         drive(ChassisSpeeds.fromFieldRelativeSpeeds(
                 fieldSpeeds.vxMetersPerSecond,

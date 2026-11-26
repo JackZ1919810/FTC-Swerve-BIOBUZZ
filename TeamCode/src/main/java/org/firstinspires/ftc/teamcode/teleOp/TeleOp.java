@@ -37,6 +37,7 @@ import org.firstinspires.ftc.teamcode.util.UpCell;
  * Gamepad 1, driver:
  *   Left stick                drive (translation)
  *   Right stick               turn (rotation)
+ *   R2 (hold)                 X-lock: wheels in an X so the robot is hard to push. Release to drive again
  *   Square [X]                field reset: robot is on this alliance's start spot
  *   Cross [A]                 FLOWER intake: press to open, press again to close
  *   Triangle [Y]              "forward" = where the robot faces now (keeps the pose)
@@ -149,7 +150,8 @@ public class TeleOp extends NextFTCOpMode {
                 () -> -gamepad1.left_stick_y,
                 () -> -gamepad1.left_stick_x,
                 () -> -gamepad1.right_stick_x,
-                () -> fieldCentric
+                () -> fieldCentric,
+                () -> xLockHeld()
         ));
 
         intake.setDefaultCommand(new IntakeFollowPower(intake, () -> intakePower()));
@@ -192,7 +194,8 @@ public class TeleOp extends NextFTCOpMode {
         telemetry.addData("X", "%.2f in", pose.getXInches());
         telemetry.addData("Y", "%.2f in", pose.getYInches());
         telemetry.addData("Heading", "%.2f deg", pose.getHeading().getDegrees());
-        telemetry.addData("Drive Mode", fieldCentric ? "Field Centric" : "Robot Centric");
+        telemetry.addData("Drive Mode", (fieldCentric ? "Field Centric" : "Robot Centric")
+                + (xLockHeld() ? "  [X-LOCK]" : ""));
 
         telemetry.addLine();
         telemetry.addLine("--- Turret aim ---");
@@ -231,6 +234,11 @@ public class TeleOp extends NextFTCOpMode {
     }
 
     // ----- Button helpers: the one place that says which button does what -----
+
+    /** Driver R2 held: X-lock (wheels in an X, robot hard to push). Released: normal driving. */
+    private boolean xLockHeld() {
+        return gamepad1.right_trigger > TRIGGER_THRESHOLD;
+    }
 
     private boolean intakeHeld() {
         return gamepad2.right_trigger > TRIGGER_THRESHOLD;

@@ -11,22 +11,31 @@ public class SwerveDriveCommand extends Command {
     private final SwerveDrivetrain drivetrain;
     private final DoubleSupplier vxSupplier, vySupplier, omegaSupplier;
     private final BooleanSupplier fieldCentricSupplier;
+    private final BooleanSupplier lockSupplier;   // true = X-lock instead of driving
 
-    public SwerveDriveCommand(SwerveDrivetrain drivetrain, 
-                              DoubleSupplier vxSupplier, 
-                              DoubleSupplier vySupplier, 
+    public SwerveDriveCommand(SwerveDrivetrain drivetrain,
+                              DoubleSupplier vxSupplier,
+                              DoubleSupplier vySupplier,
                               DoubleSupplier omegaSupplier,
-                              BooleanSupplier fieldCentricSupplier) {
+                              BooleanSupplier fieldCentricSupplier,
+                              BooleanSupplier lockSupplier) {
         this.drivetrain = drivetrain;
         this.vxSupplier = vxSupplier;
         this.vySupplier = vySupplier;
         this.omegaSupplier = omegaSupplier;
         this.fieldCentricSupplier = fieldCentricSupplier;
+        this.lockSupplier = lockSupplier;
         addRequirements(drivetrain);
     }
 
     @Override
     public void update() {
+        // X-lock wins over the sticks while it's held; released, normal driving picks up on the next loop
+        if (lockSupplier.getAsBoolean()) {
+            drivetrain.lock();
+            return;
+        }
+
         double vx = vxSupplier.getAsDouble() * DrivetrainConstants.MAX_SPEED_MPS;
         double vy = vySupplier.getAsDouble() * DrivetrainConstants.MAX_SPEED_MPS;
         double omega = omegaSupplier.getAsDouble() * DrivetrainConstants.MAX_ANGULAR_VELOCITY_RAD_PER_SEC;

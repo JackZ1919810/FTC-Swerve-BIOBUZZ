@@ -45,6 +45,8 @@ public class SubsystemConstants {
     public static double ShooterTicksPerRev = 28;   // encoder ticks per motor revolution (1:1)
     public static double ShooterMaxRPM = 6000;      // fastest speed the shooter may be asked for
     public static double defaultRPM = 3000;
+    public static double AutoShootRPM = 3000;       // Autonomous shots: tune at the auto's shooting spot
+    public static double AutoSpinUpTimeout = 1.5;   // s: Autonomous feeds anyway if not at speed by then
     public static double ShooterIdleRPM = 200;
     public static double RPMTolerance = 80;
     public static double ShooterRPMFilter = 0.3;     // 0..1 smoothing of the measured RPM: lower = smoother but slower, 1 = off
