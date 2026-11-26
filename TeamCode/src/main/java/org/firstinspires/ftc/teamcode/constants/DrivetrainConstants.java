@@ -66,9 +66,18 @@ public class DrivetrainConstants {
     // Path following (FollowPath). Meters, seconds, radians.
     public static double PATH_LOOKAHEAD = 0.25;  // m (10 in): how far ahead the robot aims
     public static double PATH_MAX_SPEED = 0.5;   // m/s: start slow, raise once it works
-    public static double PATH_MAX_ACCEL = 1.0;   // m/s^2: also sets how hard corners are taken
+    public static double PATH_MAX_ACCEL = 1.0;   // m/s^2: speeding up and slowing down (start, final stop)
+    // m/s^2: changing direction (sideways accel), so corners. Start at about 2x PATH_MAX_ACCEL.
+    // Turn accel / speed = how fast the modules must rotate (2.0 at 0.5 m/s = 230 deg/s)
+    public static double PATH_TURN_ACCEL = 2.0;
     public static double PATH_HANDOFF   = 0.10;  // m (4 in): the final PID takes over inside this
 
+    // Per-path limits: new FollowPath(drive, DrivetrainConstants.PATH_FAST, waypoints...).
+    // Without one, FollowPath uses the PATH_ values above. Each preset is tunable in Dashboard.
+    // Raise speed, lookahead and turn accel together (tuning stage 4)
+    // (max speed m/s, lookahead m, max accel m/s^2, turn accel m/s^2)
+    public static PathConstraints PATH_FAST = new PathConstraints(1.5, 0.40, 1.5, 5.0);  // from the simulation: tune on the robot
+    public static PathConstraints PATH_SLOW = new PathConstraints(0.5, 0.25, 1.0, 2.0);
     public static final DrivetrainPIDConstants autoPIDConstants = new DrivetrainPIDConstants(
             new PIDCoefficients(6.5, 0.0, 0.3), //this P value make the wheel adjusting a bit, a higher P value would decrease that.
             new PIDCoefficients(7.0, 0.0, 0.2),
@@ -85,6 +94,21 @@ public class DrivetrainConstants {
             this.kP = kP;
             this.kI = kI;
             this.kD = kD;
+        }
+    }
+
+    /** Speed and accel limits for one FollowPath. Not final, so Dashboard can change them live. */
+    public static class PathConstraints {
+        public double maxSpeed;    // m/s: cruise speed
+        public double lookahead;   // m: how far ahead the robot aims
+        public double maxAccel;    // m/s^2: speeding up and slowing down
+        public double turnAccel;   // m/s^2: changing direction (corners)
+
+        public PathConstraints(double maxSpeed, double lookahead, double maxAccel, double turnAccel) {
+            this.maxSpeed = maxSpeed;
+            this.lookahead = lookahead;
+            this.maxAccel = maxAccel;
+            this.turnAccel = turnAccel;
         }
     }
 

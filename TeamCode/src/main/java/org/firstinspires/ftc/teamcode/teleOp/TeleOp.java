@@ -216,6 +216,8 @@ public class TeleOp extends NextFTCOpMode {
         telemetry.addData("Actual Right RPM", "%.0f", shooter.getRightRPM());
         telemetry.addData("Encoders", shooter.hasEncoderMismatch() ? "MISMATCH: check cables / directions" : "OK");
         telemetry.addData("Battery (V)", "%.2f", shooter.getBatteryVoltage());
+        telemetry.addData("Voltage scale", "x%.3f  (tuned at %.1f V%s)", shooter.getVoltageScale(),
+                SubsystemConstants.TunedBatteryVolts, SubsystemConstants.VoltageCompensation ? "" : ", OFF");
         telemetry.addData("At speed", shooter.atSpeed());
         telemetry.addData("Blocker", shooter.isBlockerOpen() ? "OPEN" : "CLOSED");
         telemetry.addData("Feeding", feedHeld());
@@ -247,7 +249,8 @@ public class TeleOp extends NextFTCOpMode {
     private double intakePower() {
         if (outtakeHeld()) return SubsystemConstants.OuttakePower;
         if (intakeHeld()) return SubsystemConstants.IntakePower;
-        if (feedHeld()) return SubsystemConstants.SlowIntakePower;
+        // Shooter feed: scaled by battery voltage, so balls reach the flywheel at the same speed on a drained battery
+        if (feedHeld()) return SubsystemConstants.SlowIntakePower * shooter.getVoltageScale();
         return 0.0;
     }
 

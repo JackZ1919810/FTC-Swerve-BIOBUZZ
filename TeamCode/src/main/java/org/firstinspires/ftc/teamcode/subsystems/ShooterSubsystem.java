@@ -22,6 +22,10 @@ import org.firstinspires.ftc.teamcode.constants.SubsystemConstants;
  * Shooter on the hubs' own speed control (RUN_USING_ENCODER + setVelocity): both motors get the same
  * target speed, and each motor's hub holds it with that motor's own encoder and its own velocity PIDF
  * (Left/RightShooterVelP, I, D, F in SubsystemConstants).
+ *
+ * Voltage compensation: the hub's PIDF output is motor power, and the same power gives less speed on a
+ * lower battery. So the PIDF sent to the hubs is multiplied by TunedBatteryVolts / battery voltage,
+ * and the motors get the same voltage as when the PIDF was tuned.
  */
 public class ShooterSubsystem implements Subsystem {
 
@@ -51,8 +55,16 @@ public class ShooterSubsystem implements Subsystem {
     private double lastBlockerPos = Double.NaN;    // what was last sent to the servo
     private static final PwmControl.PwmRange AxonPWMRange = SubsystemConstants.AxonPWMRange;
 
-    // Tuning telemetry: the battery voltage
+    // Battery voltage: each read is its own hub command, so read it a few times a second, not every loop,
+    // and smooth it (it jumps around under load)
+    private static final long BATTERY_READ_PERIOD_NS = 100_000_000L;   // 0.1 s
+    private static final double BATTERY_FILTER = 0.3;                  // 0..1, lower = smoother
+    private static final double MIN_SCALE = 0.7, MAX_SCALE = 1.5;      // guards against a bad reading
+    private static final double PIDF_SCALE_STEP = 0.01;                // resend the PIDF when the scale moves 1%
     private VoltageSensor battery;
+    private double batteryVolts = Double.NaN;  // smoothed, NaN = no reading yet
+    private long lastBatteryReadNs = 0;
+    private double pidfScale = 1.0;            // the voltage scale the PIDF was last sent with
 
     public ShooterSubsystem(HardwareMap hardwareMap) {
         this.hardwareMap = hardwareMap;
@@ -104,6 +116,12 @@ public class ShooterSubsystem implements Subsystem {
         blockerOpen = false;
         lastBlockerPos = Double.NaN;
 
+        // First battery reading now, so the PIDF sent at INIT is already scaled for this battery
+        batteryVolts = Double.NaN;
+        lastBatteryReadNs = 0;
+        updateBattery();
+        pidfScale = getVoltageScale();
+
         // Always send the PIDF at init: don't rely on values left over from an earlier OpMode
         Arrays.fill(sentLeft, Double.NaN);
         Arrays.fill(sentRight, Double.NaN);
@@ -116,7 +134,8 @@ public class ShooterSubsystem implements Subsystem {
     public void periodic() {
         if (!isInitialized) return;
 
-        applyVelocityPIDF();   // picks up Dashboard changes while tuning
+        updateBattery();       // a few times a second
+        applyVelocityPIDF();   // picks up Dashboard changes while tuning, and battery changes
 
         // Every loop, even while stopped, so the reading follows the flywheel as it coasts down
         updateMeasuredRPM();
@@ -175,18 +194,36 @@ public class ShooterSubsystem implements Subsystem {
         }
     }
 
+    /** Reads the battery at most every BATTERY_READ_PERIOD_NS and smooths it. Keeps the old value on a bad reading. */
+    private void updateBattery() {
+        if (battery == null) return;
+        long now = System.nanoTime();
+        if (!Double.isNaN(batteryVolts) && now - lastBatteryReadNs < BATTERY_READ_PERIOD_NS) return;
+        lastBatteryReadNs = now;
+
+        double volts = battery.getVoltage();
+        if (!(volts > 1.0)) return;   // 0 or garbage: not a real battery reading
+        batteryVolts = Double.isNaN(batteryVolts) ? volts : batteryVolts + BATTERY_FILTER * (volts - batteryVolts);
+    }
+
     /**
-     * Sends each motor its own velocity PIDF from SubsystemConstants, only if a value changed since
-     * the last send (each send is a hub command, so not every loop). Old hub firmware throws
-     * "setting of pidf coefficients not supported": update the hub firmware if you see that.
+     * Sends each motor its own velocity PIDF from SubsystemConstants, times the voltage scale, only if a
+     * value changed since the last send (each send is a hub command, so not every loop). The scale follows
+     * the battery in 1% steps, so a slowly draining battery doesn't resend the PIDF on every reading.
+     * Old hub firmware throws "setting of pidf coefficients not supported": update the hub firmware if you see that.
      */
     private void applyVelocityPIDF() {
+        double scale = getVoltageScale();
+        if (Math.abs(scale - pidfScale) >= PIDF_SCALE_STEP || !SubsystemConstants.VoltageCompensation) {
+            pidfScale = scale;
+        }
+        double s = pidfScale;
         sendPIDFIfChanged(motorLeft, sentLeft,
-                SubsystemConstants.LeftShooterVelP, SubsystemConstants.LeftShooterVelI,
-                SubsystemConstants.LeftShooterVelD, SubsystemConstants.LeftShooterVelF);
+                SubsystemConstants.LeftShooterVelP * s, SubsystemConstants.LeftShooterVelI * s,
+                SubsystemConstants.LeftShooterVelD * s, SubsystemConstants.LeftShooterVelF * s);
         sendPIDFIfChanged(motorRight, sentRight,
-                SubsystemConstants.RightShooterVelP, SubsystemConstants.RightShooterVelI,
-                SubsystemConstants.RightShooterVelD, SubsystemConstants.RightShooterVelF);
+                SubsystemConstants.RightShooterVelP * s, SubsystemConstants.RightShooterVelI * s,
+                SubsystemConstants.RightShooterVelD * s, SubsystemConstants.RightShooterVelF * s);
     }
 
     /** sent = what this motor got last time, {P, I, D, F}. Skips the hub command if nothing changed. */
@@ -269,11 +306,22 @@ public class ShooterSubsystem implements Subsystem {
                 && Math.abs(getRightRPM() - targetRPM) < SubsystemConstants.RPMTolerance;
     }
 
-    // ----- Tuning telemetry -----
+    // ----- Battery -----
 
-    /** Battery voltage. Each call is a separate hub read, so call it once per loop at most. */
+    /** Battery voltage, smoothed, read a few times a second by periodic(). Free to call: no hub read. 0 = no reading. */
     public double getBatteryVoltage() {
-        return battery == null ? 0.0 : battery.getVoltage();
+        return Double.isNaN(batteryVolts) ? 0.0 : batteryVolts;
+    }
+
+    /**
+     * TunedBatteryVolts / battery voltage: multiply a motor power by this so the motor gets the same voltage
+     * as when it was tuned (1.00 = as tuned, 1.08 = battery 8% lower, so 8% more power).
+     * 1 when VoltageCompensation is off or there's no reading yet. Used for the PIDF here and the
+     * shooter-feed intake power in TeleOp.
+     */
+    public double getVoltageScale() {
+        if (!SubsystemConstants.VoltageCompensation || Double.isNaN(batteryVolts)) return 1.0;
+        return Range.clip(SubsystemConstants.TunedBatteryVolts / batteryVolts, MIN_SCALE, MAX_SCALE);
     }
 
     // ----- Unit conversion: TPS is only used inside this class -----

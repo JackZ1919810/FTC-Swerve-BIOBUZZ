@@ -52,22 +52,7 @@ public class RedAutoShootFirstV1 extends NextFTCOpMode {
         turret.center();   // first turret command: freezes the hand-set zero and holds the turret forward
 
         new SequentialGroup(
-                //1. Shoot
-                new Delay(1.0),
 
-                //2. Turn 90 and drive to pick up 52in
-                new PIDToPosition(drive, fromStart(0, 10, 90)).endAfter(5),
-                new PIDToPosition(drive, fromStart(0, 52, 90)).endAfter(5),
-
-                //3. Move back to shooting pos. and turn to 0 deg.
-                new PIDToPosition(drive, fromStart(0, 0, 0)).endAfter(5),
-
-                //4. Shoot
-                new Delay(1.0),
-
-                //5. Go to parking pos. 96in x+, 52in y+
-                new PIDToPosition(drive, fromStart(30, 30, 0)),
-                new PIDToPosition(drive, fromStart(96, 50, 0))
         ).schedule();
 
     }

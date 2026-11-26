@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode.autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
 import org.firstinspires.ftc.teamcode.commands.FollowPath;
+import org.firstinspires.ftc.teamcode.constants.DrivetrainConstants;
 import org.firstinspires.ftc.teamcode.swerve.SwerveDrivetrain;
 import org.firstinspires.ftc.teamcode.util.Pose2d;
 
@@ -23,10 +24,9 @@ public class PurePursuitTest extends NextFTCOpMode{
 
     @Override
     public void onStartButtonPressed(){
-        new FollowPath(swerve,
+        new FollowPath(swerve, DrivetrainConstants.PATH_FAST,
                 new Pose2d(1.0,0.0,0),
-                new Pose2d(1.0,1.0,0)
+                new Pose2d(0.3,0.7, 0)
         ).endAfter(8).schedule();
-
     }
 }

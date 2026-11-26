@@ -31,7 +31,7 @@ public class FieldConstants {
     // Red: back against the audience wall, in line with the red HIVE, front facing the rear wall.
     // The heading must match how the robot really sits: TeleOp's field-centric drive and the turret aim use it
     public static double RedStartXIn = 65.75;
-    public static double RedStartYIn = -13;
+    public static double RedStartYIn = -12.5;
     public static double RedStartHeadingDeg = 180;     // front facing the rear wall (-X)
     public static double BlueStartXIn = -65.75;        // blue = red turned 180 deg about the field center
     public static double BlueStartYIn = 13;

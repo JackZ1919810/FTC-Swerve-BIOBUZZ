@@ -70,11 +70,15 @@ public class SubsystemConstants {
     public static double FlowerOpenPos = 0.8;
     public static double FlowerClosedPos = 0.4;
 
-    // Shooter velocity PIDF: NOT used right now. ShooterSubsystem runs on our own PID below (RUN_WITHOUT_ENCODER).
-    // Kept for switching back to setVelocity (the hub's own velocity loop; units are the hub's, not ours).
     // Starting values from the REV/FIRST PIDF guide: F = 32767 / max ticks per second, P = 0.1 * F, I = 0.1 * P, D = 0
     // Max speed from ShooterKV: 1 / 0.0001925 = 5195 RPM = 2424 ticks/s, so F = 32767 / 2424 = 13.5
     // Better: measure max ticks/s on a full battery (RUN_WITHOUT_ENCODER, power 1, highest getVelocity) and redo F
+    //
+    // Battery voltage compensation: the PIDF below (and SlowIntakePower, the shooter feed) are multiplied by
+    // TunedBatteryVolts / battery voltage, so the motors get the same voltage on a drained battery as when tuned.
+    // The values below are "at TunedBatteryVolts": keep this number fixed once set, and retune with it on
+    public static boolean VoltageCompensation = true;
+    public static double TunedBatteryVolts = 13.0;   // telemetry "Battery (V)" while the PIDF / SlowIntakePower were tuned
     public static double RightShooterVelP = 2.0;
     public static double RightShooterVelI = 0.10;
     public static double RightShooterVelD = 0.0;

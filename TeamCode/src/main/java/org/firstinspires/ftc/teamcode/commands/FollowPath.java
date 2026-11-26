@@ -14,9 +14,15 @@ import org.firstinspires.ftc.teamcode.util.Translation2d;
  * Pure pursuit: drives through every waypoint without stopping, then settles on the last one.
  * While more than PATH_HANDOFF of the path is left, it aims at a point PATH_LOOKAHEAD ahead
  * along the path. Inside PATH_HANDOFF, the normal drivetrain PID takes over for the final stop.
+ * Speed, lookahead and accel come from the PathConstraints passed in (e.g. DrivetrainConstants.PATH_FAST),
+ * or from the global PATH_ values when none is given.
  */
 public class FollowPath extends Command {
+    // Below this commanded speed (m/s) there's no direction to split the accel limit along
+    private static final double DIRECTION_MIN_SPEED = 0.05;
+
     private final SwerveDrivetrain drivetrain;
+    private final DrivetrainConstants.PathConstraints constraints;   // null = the global PATH_ values
     private final Pose2d[] waypoints;
     private final DrivetrainPIDController finalPID =
             new DrivetrainPIDController(DrivetrainConstants.autoPIDConstants);
@@ -29,8 +35,16 @@ public class FollowPath extends Command {
     private double lastVx, lastVy; // last commanded field velocity, for the accel limit
     private long lastNanos;
 
+    /** Uses the global PATH_ values. */
     public FollowPath(SwerveDrivetrain drivetrain, Pose2d... waypoints) {
+        this(drivetrain, (DrivetrainConstants.PathConstraints) null, waypoints);
+    }
+
+    /** Uses this path's own limits, e.g. DrivetrainConstants.PATH_FAST. */
+    public FollowPath(SwerveDrivetrain drivetrain, DrivetrainConstants.PathConstraints constraints,
+                      Pose2d... waypoints) {
         this.drivetrain = drivetrain;
+        this.constraints = constraints;
         this.waypoints = waypoints;
         DrivetrainConstants.PIDCoefficients rot = DrivetrainConstants.autoPIDConstants.rotationCoefficients;
         this.headingPID = new PIDController(rot.kP, rot.kI, rot.kD);
@@ -78,13 +92,12 @@ public class FollowPath extends Command {
         Translation2d target;
         if (!finalPhase) {
             // 2. Aim at the lookahead point
-            target = path.pointAt(s + DrivetrainConstants.PATH_LOOKAHEAD);
+            target = path.pointAt(s + lookahead());
             Translation2d toTarget = target.minus(robot);
             double dist = toTarget.getNorm();
 
             // 3. Cruise speed, but never faster than we can still stop from
-            double speed = Math.min(DrivetrainConstants.PATH_MAX_SPEED,
-                    Math.sqrt(2 * DrivetrainConstants.PATH_MAX_ACCEL * remaining));
+            double speed = Math.min(maxSpeed(), Math.sqrt(2 * maxAccel() * remaining));
             vx = dist > 1e-6 ? toTarget.getX() / dist * speed : 0;
             vy = dist > 1e-6 ? toTarget.getY() / dist * speed : 0;
 
@@ -96,7 +109,7 @@ public class FollowPath extends Command {
             Pose2d end = path.getEnd();
             target = new Translation2d(end.x, end.y);
             ChassisSpeeds pid = finalPID.calculate(pose, end);
-            double cap = Math.sqrt(2 * DrivetrainConstants.PATH_MAX_ACCEL * robot.getDistance(target));
+            double cap = Math.sqrt(2 * maxAccel() * robot.getDistance(target));
             double mag = Math.hypot(pid.vxMetersPerSecond, pid.vyMetersPerSecond);
             double scale = mag > cap ? cap / mag : 1.0;
             vx = pid.vxMetersPerSecond * scale;
@@ -104,14 +117,29 @@ public class FollowPath extends Command {
             omega = pid.omegaRadiansPerSecond;
         }
 
-        // 6. Limit acceleration as a vector: smooth start, smooth corners, no jump at handoff
+        // 6. Limit acceleration: smooth start, smooth corners, no jump at handoff
         double dvx = vx - lastVx;
         double dvy = vy - lastVy;
-        double dv = Math.hypot(dvx, dvy);
-        double maxDv = DrivetrainConstants.PATH_MAX_ACCEL * dt;
-        if (dv > maxDv) {
-            dvx *= maxDv / dv;
-            dvy *= maxDv / dv;
+        double lastSpeed = Math.hypot(lastVx, lastVy);
+        if (lastSpeed > DIRECTION_MIN_SPEED) {
+            // Split the change into along the current velocity (speed) and sideways (direction).
+            // Separate limits, so speeding up after a corner doesn't use up the budget for turning
+            double ux = lastVx / lastSpeed;
+            double uy = lastVy / lastSpeed;
+            double maxAlong = maxAccel() * dt;
+            double maxSide = turnAccel() * dt;
+            double along = clip(dvx * ux + dvy * uy, maxAlong);
+            double side = clip(-dvx * uy + dvy * ux, maxSide);
+            dvx = along * ux - side * uy;
+            dvy = along * uy + side * ux;
+        } else {
+            // Nearly stopped: no direction yet, so limit the whole change
+            double dv = Math.hypot(dvx, dvy);
+            double maxDv = maxAccel() * dt;
+            if (dv > maxDv) {
+                dvx *= maxDv / dv;
+                dvy *= maxDv / dv;
+            }
         }
         lastVx += dvx;
         lastVy += dvy;
@@ -134,5 +162,28 @@ public class FollowPath extends Command {
     public void stop(boolean interrupted) {
         drivetrain.drive(new ChassisSpeeds(0, 0, 0));
         drivetrain.setPathOverlay(null, null, 0);   // clear the drawing
+    }
+
+    // This path's limits, read every loop so Dashboard changes apply right away
+
+    private double maxSpeed() {
+        return constraints != null ? constraints.maxSpeed : DrivetrainConstants.PATH_MAX_SPEED;
+    }
+
+    private double lookahead() {
+        return constraints != null ? constraints.lookahead : DrivetrainConstants.PATH_LOOKAHEAD;
+    }
+
+    private double maxAccel() {
+        return constraints != null ? constraints.maxAccel : DrivetrainConstants.PATH_MAX_ACCEL;
+    }
+
+    private double turnAccel() {
+        return constraints != null ? constraints.turnAccel : DrivetrainConstants.PATH_TURN_ACCEL;
+    }
+
+    /** value limited to -max..max */
+    private static double clip(double value, double max) {
+        return Math.max(-max, Math.min(max, value));
     }
 }

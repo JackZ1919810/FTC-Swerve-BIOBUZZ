@@ -65,12 +65,20 @@ public class SwerveModule {
         steeringController.setI(Steer_I);
         steeringController.setD(Steer_D);
 
+        Rotation2d current = getRotation();
+
+        // Only drive as much as the wheel points the right way: cos(error) is 1 when lined up,
+        // 0.71 at 45 deg off, 0 at 90 deg. So a module that is still turning doesn't push
+        // sideways and scrub. optimize() keeps the error within 90 deg; max(0, ...) is a guard
+        double angleError = desiredState.angle.minus(current).getRadians();
+        double alignment = Math.max(0.0, Math.cos(angleError));
+
         // Convert m/s to motor power [-1.0, 1.0]
-        double drivePower = desiredState.speedMetersPerSecond / DrivetrainConstants.MAX_SPEED_MPS;
+        double drivePower = desiredState.speedMetersPerSecond / DrivetrainConstants.MAX_SPEED_MPS * alignment;
         motor.setPower(drivePower);
 
         steeringController.setSetpoint(desiredState.angle.getRadians());
-        double steerPower = steeringController.calculate(getRotation().getRadians());
+        double steerPower = steeringController.calculate(current.getRadians());
         
         // Clamp output to [-1, 1]
         steerPower = Math.max(-1.0, Math.min(1.0, steerPower));

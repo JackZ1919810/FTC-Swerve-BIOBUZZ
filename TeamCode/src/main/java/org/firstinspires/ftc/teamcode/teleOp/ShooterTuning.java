@@ -65,6 +65,8 @@ public class ShooterTuning extends NextFTCOpMode {
 
         telemetry.addData("Encoders", shooter.hasEncoderMismatch() ? "MISMATCH: check cables / directions" : "OK");
         telemetry.addData("Battery (V)", "%.2f", shooter.getBatteryVoltage());
+        telemetry.addData("Voltage scale", "x%.3f  (tuned at %.1f V%s)", shooter.getVoltageScale(),
+                SubsystemConstants.TunedBatteryVolts, SubsystemConstants.VoltageCompensation ? "" : ", OFF");
         telemetry.addData("At speed", shooter.atSpeed());
 
         telemetry.update();
