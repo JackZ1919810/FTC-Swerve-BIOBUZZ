@@ -45,7 +45,7 @@ public class FieldConstants {
     public static double TurretPivotForwardIn = 0;
     public static double TurretPivotLeftIn = 0;
 
-    public static double AimTrimDeg = 8.0;          // added to every aim angle: + aims further left (CCW)
+    public static double AimTrimDeg = 0;          // added to every aim angle: + aims further left (CCW)
     public static double MinAimDistanceIn = 12;   // closer than this, keep the last target
 
     // TeleOp: the field heading each driver calls "forward" (they stand behind their own wall)

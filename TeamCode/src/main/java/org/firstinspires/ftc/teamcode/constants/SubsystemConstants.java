@@ -8,7 +8,7 @@ public class SubsystemConstants {
     //Intake constants
     public static double IntakePower = 1.0;
     public static double OuttakePower = -0.6;
-    public static double SlowIntakePower = 0.3;
+    public static double SlowIntakePower = 0.4;
 
     //Turret constants
     public static final PwmControl.PwmRange AxonPWMRange =
@@ -51,7 +51,7 @@ public class SubsystemConstants {
     public static double RPMTolerance = 80;
     public static double ShooterRPMFilter = 0.3;     // 0..1 smoothing of the measured RPM: lower = smoother but slower, 1 = off
     public static double ShooterMismatchRPM = 150;   // left and right encoders differ by more than this = one is wrong
-    public static double RPMStep = 100;     // change per d-pad press in TeleOp
+    public static double RPMStep = 50;     // change per d-pad press in TeleOp
     public static double MinRPM = 1000;     // lowest speed the d-pad can select
     public static boolean FeedOnlyAtSpeed = false;  // true = indexer waits until the shooter is at speed
 
@@ -65,7 +65,7 @@ public class SubsystemConstants {
     // Blocker servo ("blocker", Axon, 500-2500 us): holds the ball back until it's time to shoot.
     // 0.5 -> 1.0 is half the servo's travel (about 175 deg): tune both in Dashboard
     public static double BlockerOpenPos = 0.95;      // the ball can pass
-    public static double BlockerClosedPos = 0.6;    // the ball is held back
+    public static double BlockerClosedPos = 0.5;    // the ball is held back
 
     // Flower intake servo ("flower", Axon, 500-2500 us): opens on a command and stays open until the next one.
     // Placeholders: 0.5 -> 1.0 is about 175 deg of travel, tune both in Dashboard
@@ -79,16 +79,16 @@ public class SubsystemConstants {
     // Battery voltage compensation: the PIDF below (and SlowIntakePower, the shooter feed) are multiplied by
     // TunedBatteryVolts / battery voltage, so the motors get the same voltage on a drained battery as when tuned.
     // The values below are "at TunedBatteryVolts": keep this number fixed once set, and retune with it on
-    public static boolean VoltageCompensation = true;
-    public static double TunedBatteryVolts = 13.0;   // telemetry "Battery (V)" while the PIDF / SlowIntakePower were tuned
-    public static double RightShooterVelP = 2.0;
-    public static double RightShooterVelI = 0.10;
+    public static boolean VoltageCompensation = false;
+    public static double TunedBatteryVolts = 14.16;   // telemetry "Battery (V)" while the PIDF / SlowIntakePower were tuned
+    public static double RightShooterVelP = 2;
+    public static double RightShooterVelI = 0.1;
     public static double RightShooterVelD = 0.0;
-    public static double RightShooterVelF = 15.2;
-    public static double LeftShooterVelP = 2.0;
-    public static double LeftShooterVelI = 0.10;
+    public static double RightShooterVelF = 15.4;
+    public static double LeftShooterVelP = 2;
+    public static double LeftShooterVelI = 0.1;
     public static double LeftShooterVelD = 0.0;
-    public static double LeftShooterVelF = 15.2;
+    public static double LeftShooterVelF = 15.4;
 
     // Shooter PID: what ShooterSubsystem runs on (RUN_WITHOUT_ENCODER). Live-tunable in Dashboard.
     // power = ShooterKV * targetRPM + PID(targetRPM - measuredRPM), clipped to [0, 1], same power to both motors

@@ -46,9 +46,9 @@ import org.firstinspires.ftc.teamcode.util.UpCell;
  * Gamepad 2, operator:
  *   L2 (hold)                 shooter. Gamepad 2 rumbles once when it first reaches speed
  *                             (again only after L2 is released and pressed again)
- *   L1 (hold)                 outtake: intake backward (wins over the other intake buttons)
- *   R2 (hold)                 full-speed intake
- *   R1 (hold)                 shooter feed: slow-speed intake
+ *   L1 (hold)                 outtake: both intake motors backward (wins over the other intake buttons)
+ *   R2 (hold)                 full-speed intake: left intake motor only (wins over R1)
+ *   R1 (hold)                 shooter feed: slow-speed intake, both intake motors
  *   Triangle [Y] (hold)       blocker open (the driver decides when, no at-speed lock)
  *   Square [X]                turret: center & disable / press again to aim
  *   D-pad left / right        our upward CELL is on my left / right (pick it in INIT, again after every TIP)
@@ -154,7 +154,7 @@ public class TeleOp extends NextFTCOpMode {
                 () -> xLockHeld()
         ));
 
-        intake.setDefaultCommand(new IntakeFollowPower(intake, () -> intakePower()));
+        intake.setDefaultCommand(new IntakeFollowPower(intake, () -> intakePower(), () -> intakeLeftOnly()));
 
         shooter.setDefaultCommand(new ShooterFollowRPM(shooter,
                 () -> shootHeld() ? shooterRPM() : 0.0));
@@ -227,7 +227,8 @@ public class TeleOp extends NextFTCOpMode {
 
         telemetry.addLine();
         telemetry.addLine("--- Intake / Indexer ---");
-        telemetry.addData("Intake power", "%.2f", intake.getPower());
+        telemetry.addData("Intake power", "%.2f  (%s)", intake.getPower(),
+                intake.isLeftOnly() ? "left motor only" : "both motors");
         telemetry.addData("Flower", flower.isOpen() ? "OPEN" : "CLOSED");
 
         telemetry.update();
@@ -260,6 +261,14 @@ public class TeleOp extends NextFTCOpMode {
         // Shooter feed: scaled by battery voltage, so balls reach the flywheel at the same speed on a drained battery
         if (feedHeld()) return SubsystemConstants.SlowIntakePower * shooter.getVoltageScale();
         return 0.0;
+    }
+
+    /**
+     * Which motors intakePower() is for, same order as above: the normal intake (R2) runs the left motor only;
+     * outtake and the shooter feed (R1) run both.
+     */
+    private boolean intakeLeftOnly() {
+        return !outtakeHeld() && intakeHeld();
     }
 
     private boolean shootHeld() {
